@@ -1,0 +1,12 @@
+{
+  "name": "customs-request",
+  "version": "0.0.1",
+  "description": "leter",
+  "main": "index.js",
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Nikolay Esipov",
+  "license": "MIT"
+}
