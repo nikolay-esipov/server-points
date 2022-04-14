@@ -177,7 +177,7 @@ class Client {
         let res = await exists(lp);
         if (res) this.res.sendFile(lp);
         else {
-            this.status_code = 200;
+            this.status_code = 404;
             this.file_path_resolve()
         }
     }
