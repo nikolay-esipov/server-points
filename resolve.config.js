@@ -1,8 +1,5 @@
-const db = require('levers-db');
-const path = require("path");
-const config = require('./_test_config');
-
-let users;
+let db,
+    users;
 
 const db_controller = {
     async write_token_user(user_id, new_token) {
@@ -20,6 +17,7 @@ async function get_users() {
 }
 
 async function get_config_async(options) {
+    db = options.db
     await get_users();
     options.users = users;
     options.db = db_controller;

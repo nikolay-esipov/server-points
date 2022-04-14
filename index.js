@@ -1,6 +1,6 @@
 const path = require("path");
 const get_token = require('get_token_char');
-const get_config_async = require('./resolve.config');
+const get_config = require('./resolve.config');
 
 let main_dir, // config
     error_pages_dir, // config
@@ -58,7 +58,7 @@ function add_to_app(app) {
 
 class Client {
     static async set_config(options) {
-        let data = await get_config_async(options);
+        let data = await get_config(options);
         main_dir = data.main_dir;
         error_pages_dir = data.error_pages_dir;
         app = data.app;
@@ -165,7 +165,6 @@ class Client {
     _send_file(_path) {
         this.res.sendFile(_path || this.target_path);
     }
-
 
     async send() {
         this.file_path_resolve();

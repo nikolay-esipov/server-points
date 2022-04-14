@@ -3,10 +3,10 @@
 
 ## Installation
 
-Using npm:
+### Using npm:
 
 ```bash
-$ npm install levers-db
+$ npm install customs-request
 ```
 ## Configuration
 
@@ -15,8 +15,8 @@ $ npm install levers-db
 
 const path = require("path");
 const main_app = require('./main_app');
-const {db} = require('./start_app'); //db: type instance - levers-db;
-
+const {db} = require('./start_app'); //db: type instance - levers-db --> $ npm install levers-db;
+                                     //Экземпляр квери билдера levers-db. 
 const options = {
     main_dir: path.join(__dirname, '/src/assets'), // main project directory. Use full path - __dirname, 'current_dir'
     error_pages_dir: path.join(__dirname, '/src/assets/pages_errors'), // directory with error pages: 404.html, 401.html, ..., .
@@ -64,6 +64,14 @@ const Client = require('customs-request');
 const options = require('./options');
 Client.set_config(options);
 
+//...
+
+async function handlerServer(request, response) {
+    let client = new Client(request, response);
+    await client.init();
+}
+
+//...
 ```
 
 ## License
