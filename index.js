@@ -1,6 +1,16 @@
 const path = require("path");
+const {promises: Fs} = require('fs');
 const get_token = require('get_token_char');
 const get_config = require('./resolve.config');
+
+async function exists(path) {
+    try {
+        await Fs.access(path)
+        return true
+    } catch {
+        return false
+    }
+}
 
 let main_dir, // config
     error_pages_dir, // config
@@ -162,8 +172,14 @@ class Client {
         this.res.send(res);
     }
 
-    _send_file(_path) {
-        this.res.sendFile(_path || this.target_path);
+    async _send_file(_path) {
+        let lp = _path || this.target_path
+        let res = await exists(lp);
+        if (res) this.res.sendFile(lp);
+        else {
+            this.status_code = 200;
+            this.file_path_resolve()
+        }
     }
 
     async send() {
