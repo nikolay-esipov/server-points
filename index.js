@@ -197,7 +197,10 @@ class Client {
 
     _check_url() {
         let re_type = new RegExp('\/[_a-zA-Z0-9]+\/?$', 'i');
-        if (re_type.test(this.req.originalUrl));
+        if (re_type.test(this.req.originalUrl)) {
+            this.req.originalUrl = this.req.originalUrl.replace(/\/$/, '')
+            this.req.originalUrl += '/index.html'
+        }
         let re = new RegExp('^(?:\/[_a-zA-Z0-9]+)+(?:(?:\\?[_a-zA-Z0-9/=&]*)|(?:.js|.json|.css|.html|.jpg|.jpeg|.png|.webp|.svg|.gif))$', 'i');
         return re.test(this.req.originalUrl);
     }
