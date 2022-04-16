@@ -38,7 +38,7 @@ function add_to_app(app) {
         if (app.exist_user(user_id, req) || !check_valid_register_data(new_user)) return false;
         let [id, level] = await db.register_user(new_user);
         new_user.user_id = id;
-        new_user.user_id = level || 2;
+        new_user.user_level = level || 2;
         users.push(new_user);
     }
 
@@ -101,7 +101,7 @@ class Client {
         let curr_url = ''
         for (let i = 0; i < urls.length; i++) {
             let url = urls[i];
-            let re = new RegExp(`^${url.value}(?:\/\\w+)*(?:\\?[_a-zA-Z0-9/=&]*|(?:\.js|\.json|\.css|\.html|\.jpg|\.jpeg|\.png|\.webp|\.svg|\.gif))$`); // /? / /local/sf.js
+            let re = new RegExp(`^${url.value}.*`);
 
             if (re.test(this.req.originalUrl) && url.value.length > curr_url.length) {
                 this.url_value = this.req.originalUrl;
@@ -121,11 +121,10 @@ class Client {
             } else {
                 this.status_code = 200;
             }
-            await this.send();
         } else {
             this.status_code = 404;
-            await this.send()
         }
+        await this.send()
     }
 
     _check_user() {
@@ -142,12 +141,13 @@ class Client {
     }
 
     _log() {
+        console.log('\n');
+        console.log(this.req.originalUrl + '++++++originalUrl');
         console.log(this.status_code + '++++++status_code');
         console.log(this.method + '++++++method');
         console.log(this.url_value + '++++++url_value');
         console.log(this.target_path + '++++++target_path');
-        console.log(this.send_handler + '++++++send_handler');
-        console.log((this.req.originalUrl + '++++++originalUrl'));
+        console.log('\n');
     }
 
     file_path_resolve() {
@@ -160,16 +160,20 @@ class Client {
             404: path.join(error_pages_dir, '/404.html'),
         };
         this.target_path = this.target_path[this.status_code];
-        this._log()
     }
 
     async _call_app(id_user) {
-        let res = await app[this.method](id_user, this.req);
-        if (Array.isArray(res)) {
-            this._send_file(res);
-            return;
+        if (typeof app[this.method] === 'function') {
+            let res = await app[this.method](id_user, this.req);
+            if (Array.isArray(res)) {
+                this._send_file(res);
+                return;
+            }
+            this.res.send(res);
+            return
         }
-        this.res.send(res);
+        this.status_code = 404;
+
     }
 
     async _send_file(_path) {
@@ -178,11 +182,12 @@ class Client {
         if (res) this.res.sendFile(lp);
         else {
             this.status_code = 404;
-            this.file_path_resolve()
+            this.send()
         }
     }
 
     async send() {
+        this._log();
         this.file_path_resolve();
         this.res.status(this.status_code);
         await this.send_handler(this.user_id, this.query)
@@ -196,12 +201,12 @@ class Client {
     }
 
     _check_url() {
-        let re_type = new RegExp('\/|\/[_a-zA-Z0-9]+\/?$', 'i');
+        let re_type = new RegExp('(?:\/[_a-zA-Z0-9-]+\/?)$|(?:^\/$)', 'i');
         if (re_type.test(this.req.originalUrl)) {
             this.req.originalUrl = this.req.originalUrl.replace(/\/$/, '')
             this.req.originalUrl += '/index.html'
         }
-        let re = new RegExp('^(?:\/[_a-zA-Z0-9]+)+(?:(?:\\?[_a-zA-Z0-9/=&]*)|(?:.js|.json|.css|.html|.jpg|.jpeg|.png|.webp|.svg|.gif))$', 'i');
+        let re = new RegExp('^(?:\/[a-zA-Z0-9-_]+)+(?:(?:\\?[_a-zA-Z0-9/=&]*)|[a-zA-Z0-9-_.]+(?:\.js|\.json|\.css|\.html|\.jpg|\.jpeg|\.png|\.webp|\.svg|\.gif|\.map))$', 'i');
         return re.test(this.req.originalUrl);
     }
 }
