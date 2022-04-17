@@ -124,7 +124,7 @@ class Client {
         } else {
             this.status_code = 404;
         }
-        await this.send()
+        await this.prepend_send()
     }
 
     _check_user() {
@@ -171,7 +171,7 @@ class Client {
             return
         }
         this.status_code = 404;
-        await this.send();
+        await this.prepend_send();
     }
 
     async _send_file(_path) {
@@ -180,13 +180,16 @@ class Client {
         if (res) this.res.sendFile(lp);
         else {
             this.status_code = 404;
-            this.send()
+            await this.prepend_send()
         }
     }
 
-    async send() {
+    async prepend_send() {
         this._log();
         this.file_path_resolve();
+    }
+
+    async send() {
         this.res.status(this.status_code);
         await this.send_handler(this.user_id, this.query)
     }
