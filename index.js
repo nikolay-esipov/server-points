@@ -153,7 +153,9 @@ class Client {
     file_path_resolve() {
         if (this.method && this.status_code === 200) {
             this.send_handler = this._call_app;
-        } else this.send_handler = this._send_file;
+            return
+        }
+        this.send_handler = this._send_file;
         this.target_path = {
             200: path.join(main_dir, this.url_value),
             401: path.join(error_pages_dir, '/401.html'), // страница авторизации
@@ -165,15 +167,11 @@ class Client {
     async _call_app(id_user) {
         if (typeof app[this.method] === 'function') {
             let res = await app[this.method](id_user, this.req);
-            if (Array.isArray(res)) {
-                this._send_file(res);
-                return;
-            }
             this.res.send(res);
             return
         }
         this.status_code = 404;
-
+        await this.send();
     }
 
     async _send_file(_path) {
