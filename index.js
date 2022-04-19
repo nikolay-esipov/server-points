@@ -13,12 +13,13 @@ async function exists(path) {
 }
 
 let main_dir, // config
+    client_self,
     error_pages_dir, // config
     users, //db
     urls, // config | db
     app, // config
     db,  // config
-    token_name // config
+    token_name // config,
 
 function check_valid_register_data(user) {
     return (user.login && user.password)
@@ -49,9 +50,12 @@ function add_to_app(app) {
                 let new_token = get_token();
                 user.token = new_token;
                 await db.write_token_user(user.user_id, new_token);
-                this.set_token();
+                client_self.set_token();
             }
         }
+    }
+    app.is_auth = async function (user_id, req) {
+        client_self.set_token();
     }
 
     urls = [
@@ -91,6 +95,7 @@ class Client {
         this.cookie = request.cookies;
         this.body = request.body;
         this.query = request.query;
+        client_self = this;
     }
 
     async init() {
