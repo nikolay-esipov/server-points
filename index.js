@@ -1,16 +1,12 @@
 const path = require("path");
-const {promises: Fs} = require('fs');
-const get_token = require('get_token_char');
-const get_config = require('./resolve.config');
+const get_config = require('./lib/resolve.config');
+const {exists_file} = require('./lib/fs_lite');
 
-async function exists(path) {
-    try {
-        await Fs.access(path)
-        return true
-    } catch {
-        return false
-    }
-}
+
+let reEx_check_syntax_url = new RegExp('^(?:\/[a-zA-Z0-9-_]+)*(?:\/[a-zA-Z0-9-#_.]+)+(?:\\?[_a-zA-Z0-9=&]*|$)$', 'gi');
+let reEx_is_dir = new RegExp('\/[_a-zA-Z0-9-]+\/?$|^\/$', 'gi');
+let reEx_bad = new RegExp('\\.{2,}', 'gi');
+
 
 let main_dir, // config
     client_self,
@@ -21,58 +17,9 @@ let main_dir, // config
     db,  // config
     token_name // config,
 
-function check_valid_register_data(user) {
-    return (user.login && user.password)
-}
-
-
-function exist_user(user_id, req) {
-    return users.some(user => user.login === req.body.login)
-}
-
-function add_to_app(app) {
-
-    app.exist_user = exist_user;
-
-    app.register_user = async function (user_id, req) {
-        let new_user = req.body;
-        if (app.exist_user(user_id, req) || !check_valid_register_data(new_user)) return false;
-        let [id, level] = await db.register_user(new_user);
-        new_user.user_id = id;
-        new_user.user_level = level || 2;
-        users.push(new_user);
-    }
-
-    app.auth_user = async function (user_id, req) {
-        for (let i = 0; i < users.length; i++) {
-            let user = users[i];
-            if (user.login === req.body.login && user.password === req.body.password) {
-                let new_token = get_token();
-                user.token = new_token;
-                await db.write_token_user(user.user_id, new_token);
-                client_self.set_token();
-            }
-        }
-    }
-    app.is_auth = async function (user_id, req) {
-        client_self.set_token();
-    }
-
-    urls = [
-        {
-            value: '/exist_user',
-        },
-        {
-            value: '/register_user',
-        },
-        {
-            value: '/auth_user',
-        }].concat(urls)
-}
-
 class Client {
-    static async set_config(options) {
-        let data = await get_config(options);
+    static async set_config(configuration) {
+        let data = await get_config(configuration);
         main_dir = data.main_dir;
         error_pages_dir = data.error_pages_dir;
         app = data.app;
@@ -80,7 +27,6 @@ class Client {
         urls = data.urls;
         users = data.users;
         token_name = data.token_name;
-        add_to_app(app);
     }
 
     constructor(request, response) {
@@ -90,6 +36,7 @@ class Client {
         this.target_path = null;
         this.method = null;
         this.url_level = null;
+        this.url_level_only = null;
         this.url_value = '';
         this.status_code = null;
         this.cookie = request.cookies;
@@ -103,23 +50,23 @@ class Client {
     }
 
     match_url() {
-        let curr_url = ''
+        let curr_url = false
         for (let i = 0; i < urls.length; i++) {
             let url = urls[i];
             let re = new RegExp(`^${url.value}.*`);
 
-            if (re.test(this.req.originalUrl) && url.value.length > curr_url.length) {
-                this.url_value = this.req.originalUrl;
+            if (re.test(this.url_value) && (curr_url === false || url.value.length > curr_url.length)) {
                 curr_url = url.value;
+                this.method = url.app;
                 this.url_level = url.access_level || null;
+                this.url_level_only = url.access_level_only || null;
             }
         }
-        return curr_url && curr_url.length;
+        return curr_url !== false;
     }
 
     async resolve_url() {
         if (this._check_url() && this.match_url()) {
-            this.method = (this.url_value.match(/\/(\w+)\?/) || [null, null])[1];
             if (typeof this.url_level === 'number') {
                 this.status_code = 401;
                 await this._check_user()
@@ -129,20 +76,39 @@ class Client {
         } else {
             this.status_code = 404;
         }
-        await this.prepend_send()
+        await this.file_path_resolve()
     }
 
     _check_user() {
         let token;
-        if (!this.cookie[token_name]) return;
+        if (!this.cookie[token_name]) {
+            this.status_code = 401;
+            return;
+        }
         else token = this.cookie[token_name];
         for (let i = 0; i < users.length; i++) {
             let user = users[i];
-            if (user.token === token && user.level <= this.url_level) {
+            if (!this.url_level_only) this.url_level_only = user.level;
+            if (user.token === token && user.level <= this.url_level && user.level === this.url_level_only) {
                 this.user_id = user.user_id;
                 this.status_code = 200;
+                return;
             }
         }
+        this.status_code = 401;
+    }
+
+    deep_resolve_method() {
+        let path_app = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi)
+        if (path_app && path_app.length) {
+            this.method = app[path_app[0]]
+            for (let i = 1; i < path_app.length; i++) {
+                if (this.method && this.method[path_app[i]]) this.method = this.method[path_app[i]];
+                else this.method = null;
+            }
+        }
+        this.send_handler = this._call_app;
+
     }
 
     _log() {
@@ -155,65 +121,41 @@ class Client {
         console.log('\n');
     }
 
-    file_path_resolve() {
+    async file_path_resolve() {
         if (this.method && this.status_code === 200) {
-            this.send_handler = this._call_app;
-            return
+            let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
+            if (app[app_name] && typeof app[app_name][method_name] === 'function') {
+                let res = await app[app_name][method_name](this.user_id, this.req, this.res);
+                this.res.status(this.status_code)
+                this.res.send(res);
+                return
+            }
+            else this.status_code = 404;
         }
-        this.send_handler = this._send_file;
         this.target_path = {
             200: path.join(main_dir, this.url_value),
             401: path.join(error_pages_dir, '/401.html'), // страница авторизации
             404: path.join(error_pages_dir, '/404.html'),
         };
-        this.target_path = this.target_path[this.status_code];
-    }
-
-    async _call_app(id_user) {
-        if (typeof app[this.method] === 'function') {
-            let res = await app[this.method](id_user, this.req);
-            this.res.send(res);
-            return
+        let lp =  this.target_path[this.status_code];
+        let res = await exists_file(lp);
+        if (res) {
+            this.res.status(this.status_code)
+            this.res.sendFile(lp);
         }
-        this.status_code = 404;
-        await this.prepend_send();
-    }
-
-    async _send_file(_path) {
-        let lp = _path || this.target_path
-        let res = await exists(lp);
-        if (res) this.res.sendFile(lp);
         else {
             this.status_code = 404;
-            await this.prepend_send()
+            await this.file_path_resolve()
         }
-    }
-
-    async prepend_send() {
-        this._log();
-        this.file_path_resolve();
-    }
-
-    async send() {
-        this.res.status(this.status_code);
-        await this.send_handler(this.user_id, this.query)
-    }
-
-    set_token(token) {
-        this.res.cookie(token_name, token, {
-            expires: new Date(Date.now() + 26784e+5),
-            httpOnly: true
-        });
     }
 
     _check_url() {
-        let re_type = new RegExp('(?:\/[_a-zA-Z0-9-]+\/?)$|(?:^\/$)', 'i');
-        if (re_type.test(this.req.originalUrl)) {
+        if (reEx_is_dir.test(this.req.originalUrl)) {
             this.req.originalUrl = this.req.originalUrl.replace(/\/$/, '')
-            this.req.originalUrl += '/index.html'
+            this.url_value = this.req.originalUrl + '/index.html'
         }
-        let re = new RegExp('^(?:\/[a-zA-Z0-9-_]+)+(?:(?:\\?[_a-zA-Z0-9/=&]*)|[a-zA-Z0-9-_.]+(?:\.js|\.json|\.css|\.html|\.jpg|\.jpeg|\.png|\.webp|\.svg|\.gif|\.map))$', 'i');
-        return re.test(this.req.originalUrl);
+        this.url_value = this.req.originalUrl;
+        return reEx_check_syntax_url.test(this.url_value) && !reEx_bad.test(this.url_value);
     }
 }
 
