@@ -15,7 +15,8 @@ let main_dir, // config
     urls, // config | db
     app, // config
     db,  // config
-    token_name // config,
+    token_name, // config,
+    handler
 
 class Client {
     static async set_config(configuration) {
@@ -126,8 +127,8 @@ class Client {
             let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 let res = await app[app_name][method_name](this.user_id, this.req, this.res);
-                this.res.status(this.status_code)
                 this.res.send(res);
+                handler = this.res.send.bind(this.res, res);
                 return
             }
             else this.status_code = 404;
@@ -140,13 +141,17 @@ class Client {
         let lp =  this.target_path[this.status_code];
         let res = await exists_file(lp);
         if (res) {
-            this.res.status(this.status_code)
-            this.res.sendFile(lp);
+            handler = this.res.sendFile.bind(this.res, res);
         }
         else {
             this.status_code = 404;
-            await this.file_path_resolve()
+            await this.file_path_resolve();
         }
+    }
+
+    send() {
+        this.res.status(this.status_code);
+        handler()
     }
 
     _check_url() {
