@@ -144,7 +144,7 @@ class Client {
             return
         }
         if (this.method_result !== undefined) {
-            this.res.send(this.method_result);
+            this.res.send(this.method_result + '');
             return
         }
         this.res.status(404);
