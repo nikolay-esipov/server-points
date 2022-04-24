@@ -174,7 +174,13 @@ response = {
     - `get_users()`
         - Возвращает:
             - `array` массив строк из таблицы users
-                - ИЛИ
+              - `object`
+                  - email* `string`
+                  - password*  `string`,
+                  - token* `string`,
+                  - user_level* `string`,
+                  - ... ( other_field)`string`,
+            - **ИЛИ**
             - `boolean` false в противном случае
 
 ## Пример файла config
@@ -268,13 +274,14 @@ async function handlerServer(request, response) {
 Ваши API должны находится в директории указанной в **config.path_to_app_dir**. Имя файла это имя API, и метод
 соответственно имя метода по которым клиент будет вызывать ваше API. Уровни доступа необходимо прописать в config.
 
-### Аргументы будут переданы методам в Ваши API:
+### Аргументы будут переданы методам ваших API:
 
 - `object`
     - user `object`
-      - user_id
-      - level
-      - email
+      - email* `string`
+      - password*  `string`,
+      - token* `string`,
+      - user_level* `string`,
       - ... <other fields from table users\>
     - request `node.js<http.IncomingMessage>`
     - response `node.js<http.ServerResponse>`
