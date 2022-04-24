@@ -50,7 +50,7 @@ class Client {
         let curr_url = false
         for (let i = 0; i < urls.length; i++) {
             let url = urls[i];
-            let re = new RegExp(`^${url.value}.*`);
+            let re = new RegExp(`^${url.value}(?:\/|\\?|$).*`);
             if (re.test(this.url_value) && (curr_url === false || url.value.length > curr_url.length)) {
                 curr_url = url.value;
                 this.method = url.app;
