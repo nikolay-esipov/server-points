@@ -29,7 +29,7 @@ class Client {
     constructor(request, response) {
         this.req = request
         this.res = response
-        this.user_id = null;
+        this.user = null;
         this.target_path = null;
         this.method_result = null;
         this.method = null;
@@ -87,7 +87,7 @@ class Client {
             let user = users[i];
             if (!this.url_level_only) this.url_level_only = user.level;
             if (user.token === token && user.level <= this.url_level && user.level === this.url_level_only) {
-                this.user_id = user.user_id;
+                this.user = user;
                 this.status_code = 200;
                 return;
             }
@@ -122,7 +122,7 @@ class Client {
             let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 console.log(app_name, method_name)
-                this.method_result = await app[app_name][method_name](this.user_id, this.req, this.res);
+                this.method_result = await app[app_name][method_name](this.user, this.req, this.res);
                 return
             }
             else this.status_code = 404;
