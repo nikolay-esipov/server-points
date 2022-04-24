@@ -143,7 +143,7 @@ class Client {
             this.res.sendFile(this.target_path);
             return
         }
-        if (this.method_result) {
+        if (this.method_result !== undefined) {
             this.res.send(this.method_result);
             return
         }
