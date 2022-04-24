@@ -141,7 +141,7 @@ class Client {
         let lp =  this.target_path[this.status_code];
         let res = await exists_file(lp);
         if (res) {
-            handler = this.res.sendFile.bind(this.res, res);
+            handler = this.res.sendFile.bind(this.res, lp);
         }
         else {
             this.status_code = 404;
