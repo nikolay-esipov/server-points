@@ -3,20 +3,17 @@ const get_config = require('./lib/resolve.config');
 const {exists_file} = require('./lib/fs_lite');
 
 
-let reEx_check_syntax_url = new RegExp('^(?:\/[a-zA-Z0-9-_]+)*(?:\/[a-zA-Z0-9-#_.]+)+(?:\\?[_a-zA-Z0-9=&]*|$)$', 'gi');
-let reEx_is_dir = new RegExp('\/[_a-zA-Z0-9-]+\/?$|^\/$', 'gi');
+let reEx_check_syntax_url = new RegExp('^(?:\/[a-zA-Z0-9-_]+)*(?:\/[a-zA-Z0-9-#_.]+)+(?:\\?[_a-zA-Z0-9=&]*|$)$');
+let reEx_is_dir = new RegExp('(?:\/[_a-zA-Z0-9-]+\/?$)|(?:^\/$)');
 let reEx_bad = new RegExp('\\.{2,}', 'gi');
 
 
 let main_dir, // config
-    client_self,
     error_pages_dir, // config
     users, //db
     urls, // config | db
     app, // config
-    db,  // config
-    token_name, // config,
-    handler
+    token_name // config,
 
 class Client {
     static async set_config(configuration) {
@@ -24,7 +21,6 @@ class Client {
         main_dir = data.main_dir;
         error_pages_dir = data.error_pages_dir;
         app = data.app;
-        db = data.db;
         urls = data.urls;
         users = data.users;
         token_name = data.token_name;
@@ -35,6 +31,7 @@ class Client {
         this.res = response
         this.user_id = null;
         this.target_path = null;
+        this.method_result = null;
         this.method = null;
         this.url_level = null;
         this.url_level_only = null;
@@ -43,7 +40,6 @@ class Client {
         this.cookie = request.cookies;
         this.body = request.body;
         this.query = request.query;
-        client_self = this;
     }
 
     async init() {
@@ -55,7 +51,6 @@ class Client {
         for (let i = 0; i < urls.length; i++) {
             let url = urls[i];
             let re = new RegExp(`^${url.value}.*`);
-
             if (re.test(this.url_value) && (curr_url === false || url.value.length > curr_url.length)) {
                 curr_url = url.value;
                 this.method = url.app;
@@ -63,6 +58,9 @@ class Client {
                 this.url_level_only = url.access_level_only || null;
             }
         }
+        console.log(urls);
+        console.log(this.url_value);
+
         return curr_url !== false;
     }
 
@@ -109,7 +107,6 @@ class Client {
             }
         }
         this.send_handler = this._call_app;
-
     }
 
     _log() {
@@ -126,9 +123,7 @@ class Client {
         if (this.method && this.status_code === 200) {
             let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
-                let res = await app[app_name][method_name](this.user_id, this.req, this.res);
-                this.res.send(res);
-                handler = this.res.send.bind(this.res, res);
+                this.method_result = await app[app_name][method_name](this.user_id, this.req, this.res);
                 return
             }
             else this.status_code = 404;
@@ -137,30 +132,36 @@ class Client {
             200: path.join(main_dir, this.url_value),
             401: path.join(error_pages_dir, '/401.html'), // страница авторизации
             404: path.join(error_pages_dir, '/404.html'),
-        };
-        let lp =  this.target_path[this.status_code];
-        let res = await exists_file(lp);
-        if (res) {
-            handler = this.res.sendFile.bind(this.res, lp);
-        }
-        else {
+        }[this.status_code];
+        let res = await exists_file(this.target_path );
+        if (!res) {
             this.status_code = 404;
-            await this.file_path_resolve();
+            await this.file_path_resolve()
         }
     }
 
     send() {
         this.res.status(this.status_code);
-        handler()
+        if (this.target_path) {
+            this.res.sendFile(this.target_path);
+            return
+        }
+        if (this.method_result) {
+            this.res.send(this.method_result);
+            return
+        }
+        this.res.status(404);
+        this.res.send('Not Found ')
     }
 
     _check_url() {
         if (reEx_is_dir.test(this.req.originalUrl)) {
-            this.req.originalUrl = this.req.originalUrl.replace(/\/$/, '')
-            this.url_value = this.req.originalUrl + '/index.html'
+            this.url_value = this.req.originalUrl.replace(/\/$/, '');
+            this.url_value += '/index.html'
+        } else {
+            this.url_value = this.req.originalUrl;
         }
-        this.url_value = this.req.originalUrl;
-        return reEx_check_syntax_url.test(this.url_value) && !reEx_bad.test(this.url_value);
+        return reEx_check_syntax_url.test(this.url_value)// && !reEx_bad.test(this.url_value);
     }
 }
 
