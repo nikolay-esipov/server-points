@@ -86,7 +86,7 @@ class Client {
         if (this.method && this.status_code === 200) {
             let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
-                let method_result = await app[app_name][method_name](this.user, this.req, this.res) + '';
+                this.method_result = await app[app_name][method_name](this.user, this.req, this.res) + '';
                 return
             } else this.status_code = 404;
         }
@@ -96,7 +96,6 @@ class Client {
             404: path.join(error_pages_dir, '/404.html'),
         }[this.status_code];
 
-        _log.call(this);
         let res = await exists_file(this.target_path);
         if (!res) {
             this.status_code = 404;
@@ -140,7 +139,7 @@ class Client {
             this.res.sendFile(this.target_path);
             return
         }
-        if (this.method_result !== undefined) {
+        if (typeof this.method_result === 'string') {
             this.res.send(this.method_result + '');
             return
         }
