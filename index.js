@@ -3,6 +3,16 @@ const get_config = require('./lib/resolve.config');
 const {exists_file} = require('./lib/fs_lite');
 
 
+function _log() {
+    console.log('\n');
+    console.log(this.req.originalUrl + '++++++originalUrl');
+    console.log(this.status_code + '++++++status_code');
+    console.log(this.method + '++++++method');
+    console.log(this.url_value + '++++++url_value');
+    console.log(this.target_path + '++++++target_path');
+    console.log('\n');
+}
+
 let reEx_check_syntax_url = new RegExp('^(?:\/[a-zA-Z0-9-_]+)*(?:\/[a-zA-Z0-9-#_.]+)+(?:\\?[_a-zA-Z0-9=&]*|$)$');
 let reEx_is_dir = new RegExp('(?:\/[_a-zA-Z0-9-]+\/?$)|(?:^\/$)');
 let reEx_bad = new RegExp('\\.{2,}', 'gi');
@@ -64,11 +74,9 @@ class Client {
 
     async resolve_url() {
         if (this._check_url() && this.match_url()) {
-            if (typeof this.url_level === 'number') {
-                await this._check_user()
-            } else {
-                this.status_code = 200;
-            }
+            this.status_code = 200;
+            _log.call(this)
+            if (typeof this.url_level === 'number') await this._check_user()
         } else {
             this.status_code = 404;
         }
@@ -80,8 +88,7 @@ class Client {
         if (!this.cookie[token_name]) {
             this.status_code = 401;
             return;
-        }
-        else token = this.cookie[token_name];
+        } else token = this.cookie[token_name];
         for (let i = 0; i < users.length; i++) {
             let user = users[i];
             if (!this.url_level_only) this.url_level_only = user.level;
@@ -106,15 +113,6 @@ class Client {
         this.send_handler = this._call_app;
     }
 
-    _log() {
-        console.log('\n');
-        console.log(this.req.originalUrl + '++++++originalUrl');
-        console.log(this.status_code + '++++++status_code');
-        console.log(this.method + '++++++method');
-        console.log(this.url_value + '++++++url_value');
-        console.log(this.target_path + '++++++target_path');
-        console.log('\n');
-    }
 
     async file_path_resolve() {
         if (this.method && this.status_code === 200) {
@@ -122,15 +120,14 @@ class Client {
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 this.method_result = await app[app_name][method_name](this.user, this.req, this.res);
                 return
-            }
-            else this.status_code = 404;
+            } else this.status_code = 404;
         }
         this.target_path = {
             200: path.join(main_dir, this.url_value),
             401: path.join(error_pages_dir, '/401.html'), // страница авторизации
             404: path.join(error_pages_dir, '/404.html'),
         }[this.status_code];
-        let res = await exists_file(this.target_path );
+        let res = await exists_file(this.target_path);
         if (!res) {
             this.status_code = 404;
             await this.file_path_resolve()
