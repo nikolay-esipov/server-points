@@ -75,12 +75,33 @@ class Client {
     async resolve_url() {
         if (this._check_url() && this.match_url()) {
             this.status_code = 200;
-            _log.call(this)
-            if (typeof this.url_level === 'number') await this._check_user()
+            if (typeof this.url_level === 'number') await this._check_user();
         } else {
             this.status_code = 404;
         }
         await this.file_path_resolve()
+    }
+
+    async file_path_resolve() {
+        if (this.method && this.status_code === 200) {
+            let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
+            if (app[app_name] && typeof app[app_name][method_name] === 'function') {
+                let method_result = await app[app_name][method_name](this.user, this.req, this.res) + '';
+                return
+            } else this.status_code = 404;
+        }
+        this.target_path = {
+            200: path.join(main_dir, this.url_value),
+            401: path.join(error_pages_dir, '/401.html'), // страница авторизации
+            404: path.join(error_pages_dir, '/404.html'),
+        }[this.status_code];
+
+        _log.call(this);
+        let res = await exists_file(this.target_path);
+        if (!res) {
+            this.status_code = 404;
+            await this.file_path_resolve()
+        }
     }
 
     _check_user() {
@@ -111,27 +132,6 @@ class Client {
             }
         }
         this.send_handler = this._call_app;
-    }
-
-
-    async file_path_resolve() {
-        if (this.method && this.status_code === 200) {
-            let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
-            if (app[app_name] && typeof app[app_name][method_name] === 'function') {
-                this.method_result = await app[app_name][method_name](this.user, this.req, this.res);
-                return
-            } else this.status_code = 404;
-        }
-        this.target_path = {
-            200: path.join(main_dir, this.url_value),
-            401: path.join(error_pages_dir, '/401.html'), // страница авторизации
-            404: path.join(error_pages_dir, '/404.html'),
-        }[this.status_code];
-        let res = await exists_file(this.target_path);
-        if (!res) {
-            this.status_code = 404;
-            await this.file_path_resolve()
-        }
     }
 
     send() {
