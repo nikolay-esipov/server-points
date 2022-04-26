@@ -47,6 +47,7 @@ class Client {
         this.url_level_only = null;
         this.url_value = '';
         this.status_code = null;
+        this.status_message= null;
         this.cookie = request.cookies;
         this.body = request.body;
         this.query = request.query;
@@ -54,7 +55,10 @@ class Client {
 
     async init() {
         await this.resolve_url(urls);
+
     }
+
+    check_bot() {}
 
     match_url() {
         let curr_url = false
@@ -68,7 +72,6 @@ class Client {
                 this.url_level_only = url.access_level_only || null;
             }
         }
-
         return curr_url !== false;
     }
 
@@ -86,7 +89,7 @@ class Client {
         if (this.method && this.status_code === 200) {
             let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
-                this.method_result = await app[app_name][method_name](this.user, this.req, this.res) + '';
+                this.method_result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
                 return
             } else this.status_code = 404;
         }
@@ -134,6 +137,7 @@ class Client {
     }
 
     send() {
+        if (this.res.writableEnded) return;
         this.res.status(this.status_code);
         if (this.target_path) {
             this.res.sendFile(this.target_path);

@@ -174,12 +174,12 @@ response = {
     - `get_users()`
         - Возвращает:
             - `array` массив строк из таблицы users
-              - `object`
-                  - email* `string`
-                  - password*  `string`,
-                  - token* `string`,
-                  - user_level* `string`,
-                  - ... ( other_field)`string`,
+                - `object`
+                    - email* `string`
+                    - password*  `string`,
+                    - token* `string`,
+                    - user_level* `string`,
+                    - ... ( other_field)`string`,
             - **ИЛИ**
             - `boolean` false в противном случае
 
@@ -274,23 +274,24 @@ async function handlerServer(request, response) {
 Ваши API должны находится в директории указанной в **config.path_to_app_dir**. Имя файла это имя API, и метод
 соответственно имя метода по которым клиент будет вызывать ваше API. Уровни доступа необходимо прописать в config.
 
-### Аргументы будут переданы методам ваших API:
+### Аргументы для ваших API:
 
-- `object`
-    - user `object`
-      - email* `string`
-      - password*  `string`,
-      - token* `string`,
-      - user_level* `string`,
-      - ... <other fields from table users\>
-    - request `node.js<http.IncomingMessage>`
-    - response `node.js<http.ServerResponse>`
+  - user `object`
+    - email* `string`
+    - password*  `string`,
+    - token* `string`,
+    - user_level* `string`,
+    - ... <other fields from table users\>
+  - apps `object: <app collection customs-request>`
+  - request `object: node.js<http.IncomingMessage>`
+  - response `object: node.js<http.ServerResponse>`
 
 ### Custom метод должен Возвращать:
 
-- `string(JSON)`: Данные выполнения метода, для отправки клиенту
-    - ИЛИ
-- `boolean`: Результат выполнения метода при отсутствии данных
+Статус код и статус сообщение уже определены, так же их можно изменить через response, кроме это можно отправить ответ
+или просто вернуть его из метода. Если метод ни чего не send и не return, тогда, code 200, send пустая строка
+
+- `string(JSON)`: Данные, для отправки клиенту
 
 ## License
 
