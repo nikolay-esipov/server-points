@@ -13,8 +13,8 @@ function _log() {
     console.log('\n');
 }
 
-let reEx_check_syntax_url = new RegExp('^(?:\/[a-zA-Z0-9-_]+)*(?:\/[a-zA-Z0-9-#_.]+)+(?:\\?[_a-zA-Z0-9=&]*|$)$');
-let reEx_is_dir = new RegExp('(?:\/[_a-zA-Z0-9-]+\/?$)|(?:^\/$)');
+let reEx_check_syntax_url = new RegExp('^(?:\/[а-яА-Яa-zA-Z0-9-_]+)*(?:\/[а-яА-Яa-zA-Z0-9-#_.]+)+(?:\\?[_а-яА-Яa-zA-Z0-9=&]*|$)$');
+let reEx_is_dir = new RegExp('(?:\/[_а-яА-Яa-zA-Z0-9-]+\/?$)|(?:^\/$)');
 let reEx_bad = new RegExp('\\.{2,}', 'gi');
 
 
@@ -46,25 +46,41 @@ class Client {
         this.url_level = null;
         this.url_level_only = null;
         this.url_value = '';
-        this.status_code = null;
-        this.status_message= null;
+        this.status_code = 200;
+        this.status_message= 'ok';
         this.cookie = request.cookies;
         this.body = request.body;
         this.query = request.query;
     }
 
     async init() {
-        await this.resolve_url(urls);
-
+        (
+            this._check_url() &&
+            this._match_url() &&
+            this._check_user()
+        )
+        await this.file_path_resolve()
     }
 
-    check_bot() {}
-
-    match_url() {
+    _check_url() {
+        if (reEx_is_dir.test(this.req.originalUrl)) {
+            this.url_value = this.req.originalUrl.replace(/\/$/, '');
+            this.url_value += '/index.html'
+        } else {
+            this.url_value = this.req.originalUrl;
+        }
+        if (!reEx_check_syntax_url.test(this.url_value) || reEx_bad.test(this.url_value)) {
+            this._wmc('syntax error', 400);
+            return false
+        }
+        return true;
+    }
+    
+    _match_url() {
         let curr_url = false
         for (let i = 0; i < urls.length; i++) {
             let url = urls[i];
-            let re = new RegExp(`^${url.value}(?:\/|\\?|$).*`);
+            let re = new RegExp(`^${url.value}(?:\/|\\?|$).*`, 'i');
             if (re.test(this.url_value) && (curr_url === false || url.value.length > curr_url.length)) {
                 curr_url = url.value;
                 this.method = url.app;
@@ -72,56 +88,51 @@ class Client {
                 this.url_level_only = url.access_level_only || null;
             }
         }
-        return curr_url !== false;
+
+        if (curr_url === false) {
+            this._wmc('not found', 404);
+            return false
+        }
+        return true;
     }
 
-    async resolve_url() {
-        if (this._check_url() && this.match_url()) {
-            this.status_code = 200;
-            if (typeof this.url_level === 'number') await this._check_user();
-        } else {
-            this.status_code = 404;
+    _check_user() {
+        if (typeof this.url_level !== 'number') return true;
+        let token = this.cookie[token_name];
+        if (token) {
+            for (let i = 0; i < users.length; i++) {
+                let user = users[i];
+                if (!this.url_level_only) this.url_level_only = user.level;
+                if (user.token === token && user.level <= this.url_level && user.level === this.url_level_only) {
+                    this.user = user;
+                    return true;
+                }
+            }
         }
-        await this.file_path_resolve()
+        this._wmc('Not authorized', 401);
+        return false
     }
+
 
     async file_path_resolve() {
         if (this.method && this.status_code === 200) {
-            let [app_name, method_name] = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi);
+            let [app_name, method_name] = this.url_value.match(/[а-яА-Яa-zA-Z0-9-_]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 this.method_result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
                 return
-            } else this.status_code = 404;
+            } else this._wmc(`method not found`, 404);
         }
         this.target_path = {
             200: path.join(main_dir, this.url_value),
-            401: path.join(error_pages_dir, '/401.html'), // страница авторизации
-            404: path.join(error_pages_dir, '/404.html'),
+            401: path.join(error_pages_dir, '/401.html'), // !!! check before start страница авторизации
+            404: path.join(error_pages_dir, '/404.html'), // !!! check before start
         }[this.status_code];
 
         let res = await exists_file(this.target_path);
         if (!res) {
-            this.status_code = 404;
-            await this.file_path_resolve()
+            this._wmc('not found', 404);
+            this.target_path = path.join(error_pages_dir, '/404.html')
         }
-    }
-
-    _check_user() {
-        let token;
-        if (!this.cookie[token_name]) {
-            this.status_code = 401;
-            return;
-        } else token = this.cookie[token_name];
-        for (let i = 0; i < users.length; i++) {
-            let user = users[i];
-            if (!this.url_level_only) this.url_level_only = user.level;
-            if (user.token === token && user.level <= this.url_level && user.level === this.url_level_only) {
-                this.user = user;
-                this.status_code = 200;
-                return;
-            }
-        }
-        this.status_code = 401;
     }
 
     deep_resolve_method() {
@@ -138,28 +149,29 @@ class Client {
 
     send() {
         if (this.res.writableEnded) return;
-        this.res.status(this.status_code);
+        this._smc();
         if (this.target_path) {
             this.res.sendFile(this.target_path);
             return
         }
         if (typeof this.method_result === 'string') {
-            this.res.send(this.method_result + '');
+            this.res.send(this.method_result);
             return
         }
-        this.res.status(404);
-        this.res.send('Not Found ')
+        this._wmc('not found', 404);
+        this.res.send()
     }
 
-    _check_url() {
-        if (reEx_is_dir.test(this.req.originalUrl)) {
-            this.url_value = this.req.originalUrl.replace(/\/$/, '');
-            this.url_value += '/index.html'
-        } else {
-            this.url_value = this.req.originalUrl;
-        }
-        return reEx_check_syntax_url.test(this.url_value)// && !reEx_bad.test(this.url_value);
+    _wmc(message, code) {
+        this.status_code = code;
+        this.status_message= message;
     }
+
+    _smc() {
+        this.res.status(this.status_code);
+        this.res.statusMessage(this.status_message)
+    }
+
 }
 
 module.exports = Client
