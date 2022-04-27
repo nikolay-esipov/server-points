@@ -169,7 +169,7 @@ class Client {
 
     _smc() {
         this.res.status(this.status_code);
-        this.res.statusMessage(this.status_message)
+        this.res.statusMessage = this.status_message
     }
 
 }
