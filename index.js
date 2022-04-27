@@ -10,10 +10,11 @@ function _log() {
     console.log(this.method + '++++++method');
     console.log(this.url_value + '++++++url_value');
     console.log(this.target_path + '++++++target_path');
+    console.log(JSON.stringify(urls) + '++++++urls');
     console.log('\n');
 }
 
-let reEx_check_syntax_url = new RegExp('^(?:\/[а-яА-Яa-zA-Z0-9-_]+)*(?:\/[а-яА-Яa-zA-Z0-9-#_.]+)+(?:\\?[_а-яА-Яa-zA-Z0-9=&]*|$)$');
+let reEx_check_syntax_url = new RegExp('^(?:\/[а-яА-Яa-zA-Z0-9-_%]+)*(?:\/[а-яА-Яa-zA-Z0-9-#_.%]+)+(?:\\?[_а-яА-Яa-zA-Z0-9=&%]*|$)$');
 let reEx_is_dir = new RegExp('(?:\/[_а-яА-Яa-zA-Z0-9-]+\/?$)|(?:^\/$)');
 let reEx_bad = new RegExp('\\.{2,}', 'gi');
 
@@ -75,7 +76,7 @@ class Client {
         }
         return true;
     }
-    
+
     _match_url() {
         let curr_url = false
         for (let i = 0; i < urls.length; i++) {
@@ -86,6 +87,7 @@ class Client {
                 this.method = url.app;
                 this.url_level = url.access_level || null;
                 this.url_level_only = url.access_level_only || null;
+                console.log(curr_url + '=============')
             }
         }
 
@@ -118,13 +120,18 @@ class Client {
         if (this.method && this.status_code === 200) {
             let [app_name, method_name] = this.url_value.match(/[а-яА-Яa-zA-Z0-9-_]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
-                this.method_result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
-                return
+                try {
+                    this.method_result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
+                } catch (e) {
+                    this._wmc('method error found', 404);
+                }
+                return;
             } else this._wmc(`method not found`, 404);
         }
         this.target_path = {
             200: path.join(main_dir, this.url_value),
             401: path.join(error_pages_dir, '/401.html'), // !!! check before start страница авторизации
+            400: path.join(error_pages_dir, '/400.html'), // !!! check before start
             404: path.join(error_pages_dir, '/404.html'), // !!! check before start
         }[this.status_code];
 
@@ -148,6 +155,7 @@ class Client {
     }
 
     send() {
+        _log.call(this);
         if (this.res.writableEnded) return;
         this._smc();
         if (this.target_path) {
