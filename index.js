@@ -90,7 +90,7 @@ class Client {
         }
 
         if (curr_url === false) {
-            this._wmc('not found', 404);
+            this._wmc('url not found', 404);
             return false
         }
         return true;
@@ -130,7 +130,7 @@ class Client {
 
         let res = await exists_file(this.target_path);
         if (!res) {
-            this._wmc('not found', 404);
+            this._wmc('file not found', 404);
             this.target_path = path.join(error_pages_dir, '/404.html')
         }
     }
