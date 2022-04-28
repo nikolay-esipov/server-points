@@ -63,8 +63,7 @@ class Client {
             this._match_url() &&
             this._check_user() &&
             await this._check_method() &&
-            await this._check_file_path() &&
-            await this._set_error()
+            await this._check_file_path()
         )
     }
 
@@ -77,6 +76,7 @@ class Client {
         }
         if (!reEx_check_syntax_url.test(this.url_value) || reEx_bad.test(this.url_value)) {
             this._wmc('syntax error', 400);
+            this.result = get_container_error_agent.call(this)
             return false
         }
         return true;
@@ -98,6 +98,7 @@ class Client {
 
         if (curr_url === false) {
             this._wmc('url not found', 404);
+            this.result = get_container_error_agent.call(this)
             return false
         }
         return true;
@@ -117,6 +118,7 @@ class Client {
             }
         }
         this._wmc('Not authorized', 401);
+        this.result = get_container_error_agent.call(this)
         return false
     }
 
@@ -146,11 +148,8 @@ class Client {
             return false;
         }
         this._wmc('file not found', 404);
-        return true;
-    }
-
-    async _set_error() {
         this.result = get_container_error_agent.call(this)
+        return true;
     }
 
     deep_resolve_method() {
