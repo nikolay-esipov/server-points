@@ -128,12 +128,12 @@ class Client {
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 try {
                     this.result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
-                    return false
                 } catch (e) {
                     console.log(e);
                     this._wmc('method error', 404);
                 }
             } else this._wmc(`method not found`, 404);
+            return false;
         }
         return true
     }
