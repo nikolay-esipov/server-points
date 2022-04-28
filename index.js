@@ -1,7 +1,7 @@
 const path = require("path");
 const get_config = require('./lib/resolve.config');
+const {get_container_error_agent, set_path_to_error_agent} = require('./lib/error_req_client');
 const {exists_file} = require('./lib/fs_lite');
-
 
 function _log() {
     console.log('\n');
@@ -11,6 +11,7 @@ function _log() {
     console.log(this.url_value + '++++++url_value');
     console.log(this.target_path + '++++++target_path');
     console.log(JSON.stringify(urls) + '++++++urls');
+    console.log(JSON.stringify(users) + '++++++users');
     console.log('\n');
 }
 
@@ -20,7 +21,6 @@ let reEx_bad = new RegExp('\\.{2,}', 'gi');
 
 
 let main_dir, // config
-    error_pages_dir, // config
     users, //db
     urls, // config | db
     app, // config
@@ -29,8 +29,8 @@ let main_dir, // config
 class Client {
     static async set_config(configuration) {
         let data = await get_config(configuration);
+        set_path_to_error_agent(data.path_to_error_agent)
         main_dir = data.main_dir;
-        error_pages_dir = data.error_pages_dir;
         app = data.app;
         urls = data.urls;
         users = data.users;
@@ -42,25 +42,30 @@ class Client {
         this.res = response
         this.user = null;
         this.target_path = null;
-        this.method_result = null;
+        this.result = null;
         this.method = null;
         this.url_level = null;
         this.url_level_only = null;
         this.url_value = '';
         this.status_code = 200;
-        this.status_message= 'ok';
+        this.status_message = 'ok';
         this.cookie = request.cookies;
         this.body = request.body;
         this.query = request.query;
+        this.send_handler = function () {
+            this.res.send(this.result)
+        };
     }
 
     async init() {
         (
             this._check_url() &&
             this._match_url() &&
-            this._check_user()
+            this._check_user() &&
+            await this._check_method() &&
+            await this._check_file_path() &&
+            await this._set_error()
         )
-        await this.file_path_resolve()
     }
 
     _check_url() {
@@ -115,31 +120,37 @@ class Client {
         return false
     }
 
-
-    async file_path_resolve() {
-        if (this.method && this.status_code === 200) {
-            let [app_name, method_name] = this.url_value.match(/[а-яА-Яa-zA-Z0-9-_]+(?=\?|\/)/gi);
+    async _check_method() {
+        if (this.method) {
+            let [app_name, method_name] = this.url_value.match(/[а-яА-Яa-zA-Z0-9-_%]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 try {
-                    this.method_result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
-                    return;
+                    this.result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
+                    return false
                 } catch (e) {
-                    this._wmc('method error found', 404);
+                    console.log(e);
+                    this._wmc('method error', 404);
                 }
             } else this._wmc(`method not found`, 404);
         }
-        this.target_path = {
-            200: path.join(main_dir, this.url_value),
-            401: path.join(error_pages_dir, '/401.html'), // !!! check before start страница авторизации
-            400: path.join(error_pages_dir, '/400.html'), // !!! check before start
-            404: path.join(error_pages_dir, '/404.html'), // !!! check before start
-        }[this.status_code];
+        return true
+    }
 
-        let res = await exists_file(this.target_path);
-        if (!res) {
-            this._wmc('file not found', 404);
-            this.target_path = path.join(error_pages_dir, '/404.html')
+    async _check_file_path() {
+        let res = await exists_file(path.join(main_dir, this.url_value));
+        if (res) {
+            this.target_path = path.join(main_dir, this.url_value);
+            this.send_handler = function () {
+                this.res.sendFile(this.target_path)
+            };
+            return false;
         }
+        this._wmc('file not found', 404);
+        return true;
+    }
+
+    async _set_error() {
+        this.result = get_container_error_agent.call(this)
     }
 
     deep_resolve_method() {
@@ -155,24 +166,14 @@ class Client {
     }
 
     send() {
-        _log.call(this);
         if (this.res.writableEnded) return;
         this._smc();
-        if (this.target_path) {
-            this.res.sendFile(this.target_path);
-            return
-        }
-        if (typeof this.method_result === 'string') {
-            this.res.send(this.method_result);
-            return
-        }
-        this._wmc('not found', 404);
-        this.res.send()
+        this.send_handler()
     }
 
     _wmc(message, code) {
         this.status_code = code;
-        this.status_message= message;
+        this.status_message = message;
     }
 
     _smc() {
