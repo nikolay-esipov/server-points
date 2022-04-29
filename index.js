@@ -131,8 +131,12 @@ class Client {
                 } catch (e) {
                     console.log(e);
                     this._wmc('method error', 404);
+                    this.result = get_container_error_agent.call(this);
                 }
-            } else this._wmc(`method not found`, 404);
+            } else {
+                this._wmc(`method not found`, 404);
+                this.result = get_container_error_agent.call(this);
+            }
             return false;
         }
         return true
@@ -143,13 +147,12 @@ class Client {
         if (res) {
             this.target_path = path.join(main_dir, this.url_value);
             this.send_handler = function () {
-                this.res.sendFile(this.target_path)
-            };
-            return false;
+                this.res.sendFile(this.target_path);
+            }
+            return;
         }
         this._wmc('file not found', 404);
-        this.result = get_container_error_agent.call(this)
-        return true;
+        this.result = get_container_error_agent.call(this);
     }
 
     deep_resolve_method() {
