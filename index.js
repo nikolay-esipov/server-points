@@ -1,6 +1,6 @@
 const path = require("path");
 const get_config = require('./lib/resolve.config');
-const {get_container_error_agent, set_path_to_error_agent} = require('./lib/error_req_client');
+const {get_html_container_error_agent, set_path_to_error_agent} = require('./lib/error_req_client');
 const {exists_file} = require('./lib/fs_lite');
 
 function _log() {
@@ -53,6 +53,7 @@ class Client {
         this.body = request.body;
         this.query = request.query;
         this.send_handler = function () {
+            if (this.status_code !== 200) this.result = get_html_container_error_agent.call(this);
             this.res.send(this.result)
         };
     }
@@ -61,7 +62,7 @@ class Client {
         (
             this._check_url() &&
             this._match_url() &&
-            this._check_user() &&
+            await this._check_user() &&
             await this._check_method() &&
             await this._check_file_path()
         )
@@ -76,7 +77,6 @@ class Client {
         }
         if (!reEx_check_syntax_url.test(this.url_value) || reEx_bad.test(this.url_value)) {
             this._wmc('syntax error', 400);
-            this.result = get_container_error_agent.call(this)
             return false
         }
         return true;
@@ -98,27 +98,25 @@ class Client {
 
         if (curr_url === false) {
             this._wmc('url not found', 404);
-            this.result = get_container_error_agent.call(this)
             return false
         }
         return true;
     }
 
-    _check_user() {
+    async _check_user() {
         if (typeof this.url_level !== 'number') return true;
-        let token = this.cookie[token_name];
-        if (token) {
-            for (let i = 0; i < users.length; i++) {
-                let user = users[i];
-                if (!this.url_level_only) this.url_level_only = user.level;
-                if (user.token === token && user.level <= this.url_level && user.level === this.url_level_only) {
-                    this.user = user;
-                    return true;
-                }
-            }
+        let user = await app.ident.is_user();
+        if (!user) {
+            this._wmc('Not authorized', 401);
+            return false
         }
-        this._wmc('Not authorized', 401);
-        this.result = get_container_error_agent.call(this)
+        let {user_id, user_level} = user;
+        if (!this.url_level_only) this.url_level_only = user.level;
+        if (user_level <= this.url_level && user_level === this.url_level_only) {
+            this.user = {user_id, user_level};
+            return true;
+        }
+        this._wmc('user level invalid', 401);
         return false
     }
 
@@ -127,15 +125,18 @@ class Client {
             let [app_name, method_name] = this.url_value.match(/[а-яА-Яa-zA-Z0-9-_%]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 try {
-                    this.result = await app[app_name][method_name](this.user, this.req, this.res, app) + '';
+                    this.result = await app[app_name][method_name]({
+                        user: this.user,
+                        req: this.req,
+                        res: this.res,
+                        apps: app
+                    }) + '';
                 } catch (e) {
                     console.log(e);
                     this._wmc('method error', 404);
-                    this.result = get_container_error_agent.call(this);
                 }
             } else {
                 this._wmc(`method not found`, 404);
-                this.result = get_container_error_agent.call(this);
             }
             return false;
         }
@@ -152,7 +153,6 @@ class Client {
             return;
         }
         this._wmc('file not found', 404);
-        this.result = get_container_error_agent.call(this);
     }
 
     deep_resolve_method() {
