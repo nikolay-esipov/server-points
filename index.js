@@ -90,7 +90,7 @@ class Client {
             if (re.test(this.url_value) && (curr_url === false || url.value.length > curr_url.length)) {
                 curr_url = url.value;
                 this.method = url.app;
-                this.url_level = url.access_level || null;
+                this.url_level = url.access_level;
                 this.url_level_only = url.access_level_only || null;
                 console.log(curr_url + '=============')
             }
