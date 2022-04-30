@@ -105,7 +105,12 @@ class Client {
 
     async _check_user() {
         if (typeof this.url_level !== 'number') return true;
-        let user = await app.ident.is_user();
+        let user = await app.ident.is_user({
+            user: this.user,
+            req: this.req,
+            res: this.res,
+            apps: app
+        });
         if (!user) {
             this._wmc('Not authorized', 401);
             return false
