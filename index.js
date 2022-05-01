@@ -7,7 +7,7 @@ function _log() {
     console.log('\n');
     console.log(this.req.originalUrl + '++++++originalUrl');
     console.log(this.status_code + '++++++status_code');
-    console.log(this.method + '++++++method');
+    console.log(this.method_app + '++++++method');
     console.log(this.url_value + '++++++url_value');
     console.log(this.target_path + '++++++target_path');
     console.log(JSON.stringify(urls) + '++++++urls');
@@ -41,9 +41,10 @@ class Client {
         this.req = request
         this.res = response
         this.user = null;
+        this.ip = request.headers['x-forwarded-for'] || request.connection.remoteAddress;
         this.target_path = null;
         this.result = null;
-        this.method = null;
+        this.method_app = null;
         this.url_level = null;
         this.url_level_only = null;
         this.url_value = '';
@@ -89,7 +90,7 @@ class Client {
             let re = new RegExp(`^${url.value}(?:\/|\\?|$).*`, 'i');
             if (re.test(this.url_value) && (curr_url === false || url.value.length > curr_url.length)) {
                 curr_url = url.value;
-                this.method = url.app;
+                this.method_app = url.app;
                 this.url_level = url.access_level;
                 this.url_level_only = url.access_level_only || null;
                 console.log(curr_url + '=============')
@@ -106,10 +107,7 @@ class Client {
     async _check_user() {
         if (typeof this.url_level !== 'number') return true;
         let user = await app.ident.is_user({
-            user: this.user,
-            req: this.req,
-            res: this.res,
-            apps: app
+            cookie: this.cookie,
         });
         if (!user) {
             this._wmc('Not authorized', 401);
@@ -126,7 +124,7 @@ class Client {
     }
 
     async _check_method() {
-        if (this.method) {
+        if (this.method_app) {
             let [app_name, method_name] = this.url_value.match(/[а-яА-Яa-zA-Z0-9-_%]+(?=\?|\/)/gi);
             if (app[app_name] && typeof app[app_name][method_name] === 'function') {
                 try {
@@ -134,6 +132,17 @@ class Client {
                         user: this.user,
                         req: this.req,
                         res: this.res,
+                        body: this.body,
+                        query: this.query,
+                        url_level: this.url_level,
+                        url_level_only: this.url_level_only,
+                        url_value: this.url_value,
+                        send: function (code, message, data) {
+                            this.status_code = code;
+                            this.status_message = message
+                            this.result = data
+                            this.send()
+                        }.bind(this),
                         apps: app
                     }) + '';
                 } catch (e) {
@@ -163,10 +172,10 @@ class Client {
     deep_resolve_method() {
         let path_app = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi)
         if (path_app && path_app.length) {
-            this.method = app[path_app[0]]
+            this.method_app = app[path_app[0]]
             for (let i = 1; i < path_app.length; i++) {
-                if (this.method && this.method[path_app[i]]) this.method = this.method[path_app[i]];
-                else this.method = null;
+                if (this.method_app && this.method_app[path_app[i]]) this.method_app = this.method_app[path_app[i]];
+                else this.method_app = null;
             }
         }
         this.send_handler = this._call_app;
@@ -174,7 +183,7 @@ class Client {
 
     send() {
         if (this.res.writableEnded) return;
-        this._smc();
+        this._smc(this.status_code, this.status_message);
         this.send_handler()
     }
 
@@ -183,9 +192,9 @@ class Client {
         this.status_message = message;
     }
 
-    _smc() {
+    _smc(code, message) {
         this.res.status(this.status_code);
-        this.res.statusMessage = this.status_message
+        this.res.statusMessage = this.status_message;
     }
 
 }
