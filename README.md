@@ -1,7 +1,5 @@
 # customs-request
 
-
-
 ## Installation
 
 ### Using npm:
@@ -13,66 +11,66 @@ $ npm install customs-request
 ## Configuration
 
 - ### main_dir `string`
-  Директория относительно которой будут находиться все файлы проекта, корень проекта **- задается абсолютным путем**.
+  Директория относительно которой будут находиться все файлы проекта, корень проекта - _задается абсолютным путем_.
 - ### error_pages_dir `string`
-  Директория для страниц ошибок имя страницы должно соответствовать коду ошибки **- задается абсолютным путем**.
+  Директория для страниц ошибок имя страницы должно соответствовать коду ошибки - _задается абсолютным путем_.
     - 404.html
     - 503.html
     - 401.html
     - ...
 
-- ### urls `array` массив объектов url
-    - Если _access_level_ не указан доступно для всех посетителей. Указать можно директорию, файл, приложения, метод
-      приложения. Ограничение для директории/приложения распространяется на все вложенные файлы и директории/методы,
-      если не указано отдельно вложенный файл или директории, в таком случае действует локальное ограничение.
+- ### urls `array`
+  Указать можно путь к директории, файлу или имя приложению и его метод. Ограничение для директории/приложения
+  распространяется на все вложенные файлы и директории/методы, при условии, если вложенный файл или директория/метод не
+  указаны отдельно, в таком случае действует указанные ограничение.
+    - `objekt`
+        - **value** `string` путь относительно _main_dir_ | имя приложение | имя приложение и метода.
+        - **access_level** **|** **access_level_only** `number` уровень доступа урал: main admin - 0, admin - 1, user -
+          2, не подтвержденный user - 3. Если **access_level**: урл будет доступен от указанного до наивысшего. **
+          access_level_only**: Только указанный. Если access_level не указан доступно для всех посетителей.
+        - **app** `boolean` является ли приложением, если false или не указан, значит это путь к директории/файлу
 
-        - `objekt`
-            - **value** `string` путь относительно _main_dir_ | имя приложение | имя приложение и метода.
-            - **access_level** **|** **access_level_only** `number` уровень доступа юзера: main admin - 0, admin - 1,
-              user - 2, не подтвержденный user - 3. От указанного до наивысшего access_level | только указанный
-              access_level_only
-            - **app** `boolean` является ли приложением, если false или не указан, значит это путь к директории/файлу
-- ### path_to_app_dir `string` путь к коллекции пользовательских приложений
+- ### path_to_app_dir `string`
+  путь к коллекции пользовательских приложений
     - Уровень доступа к приложению или конкретному методу приложения устанавливается в конфиге.
     - Вызов метода: `/app_name/method_name?`.
-- ### db `object`: представление базы данных, объект с методами:
-
-    - `register_user()`
-        - Аргументы:
-            - `object`
-                - email* `string`
-                - password*  `string`,
-                - token* `string`,
-                - user_level* `string`,
-                - ... ( other_field)`string`,
-
-        - Возвращает:
-            - `string` id юзера в случае успеха
-                - ИЛИ
-            - `boolean` false в противном случае
-              <br><br/>
-    - `update_user_field()`
-        - Аргументы:
-            - field_name* `string`
-            - new_value*  `string`,
-            - user_id* `string`,
-
-        - Возвращает:
-            - `boolean` 
-              - **true** поле в таблице users обновлено успешно
-              - **false** ошибка обновления 
-                <br><br/>
-    - `get_users()`
-        - Возвращает:
-            - `array` массив строк из таблицы users
+    - ### db `object`: представление базы данных, объект с методами:
+        - `register_user()`
+            - Аргументы:
                 - `object`
                     - email* `string`
                     - password*  `string`,
                     - token* `string`,
                     - user_level* `string`,
                     - ... ( other_field)`string`,
-            - **ИЛИ**
-            - `boolean` false в противном случае
+
+            - Возвращает:
+                - `string` id юзера в случае успеха
+                    - ИЛИ
+                - `boolean` false в противном случае
+                  <br><br/>
+        - `update_user_field()`
+            - Аргументы:
+                - field_name* `string`
+                - new_value*  `string`,
+                - user_id* `string`,
+
+            - Возвращает:
+                - `boolean`
+                    - **true** поле в таблице users обновлено успешно
+                    - **false** ошибка обновления
+                      <br><br/>
+        - `get_users()`
+            - Возвращает:
+                - `array` массив строк из таблицы users
+                    - `object`
+                        - email* `string`
+                        - password*  `string`,
+                        - token* `string`,
+                        - user_level* `string`,
+                        - ... ( other_field)`string`,
+                - **ИЛИ**
+                - `boolean` false в противном случае
 
 ### Пример файла config
 
@@ -219,11 +217,11 @@ body = {
     2) представляет пустую форму пользователю для авторизации
     3) после ввода отправляет запрос на сервер, ответ:
 
-       - 200 ок - все ок
-       - 401 email_taken _- занят уже_
-       - 401 email_syntax_error _- не правильный синтаксис у e-mail_
-       - 401 password_syntax_error _- не правильный синтаксис у password_
-       - 401 check_bot_error _- не прошел проверку на бот_
+        - 200 ок - все ок
+        - 401 email_taken _- занят уже_
+        - 401 email_syntax_error _- не правильный синтаксис у e-mail_
+        - 401 password_syntax_error _- не правильный синтаксис у password_
+        - 401 check_bot_error _- не прошел проверку на бот_
 
 ### Получить задания для антибот
 
@@ -266,12 +264,12 @@ async function handlerServer(request, response) {
 ## Data Base
 
 ### users
+
 - id
 - email
 - password
 - token
 - level
-
 
 ## Customs API
 
@@ -279,13 +277,14 @@ async function handlerServer(request, response) {
 соответственно имя метода по которым клиент будет вызывать ваше API. Уровни доступа необходимо прописать в config.
 
 ### Аргументы для ваших API:
+
 - `object`
-  - user `object`
-    - user_id* `string`,
-    - user_level* `string`,
-  - apps `object: <app collection customs-request>`
-  - request `object: node.js<http.IncomingMessage>`
-  - response `object: node.js<http.ServerResponse>`
+    - user `object`
+        - user_id* `string`,
+        - user_level* `string`,
+    - apps `object: <app collection customs-request>`
+    - request `object: node.js<http.IncomingMessage>`
+    - response `object: node.js<http.ServerResponse>`
 
 ### Custom метод должен Возвращать:
 
