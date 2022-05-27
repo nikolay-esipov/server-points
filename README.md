@@ -12,12 +12,21 @@ $ npm install customs-request
 
 - ### main_dir `string`
   Директория относительно которой будут находиться все файлы проекта, корень проекта - _задается абсолютным путем_.
-- ### error_pages_dir `string`
-  Директория для страниц ошибок имя страницы должно соответствовать коду ошибки - _задается абсолютным путем_.
+
+- ### path_to_error_pages_dir `string`
+  Путь к директории страниц ошибок имя страницы должно соответствовать коду ошибки. Имеет приоритет над
+  path_to_error_agent - _задается абсолютным путем_.
     - 404.html
     - 503.html
     - 401.html
     - ...
+
+
+- ### path_to_error_agent `string`
+  Путь к error_agent - это скрипт, который отправляется в HTML контейнере, в случае возникновения ошибок 401, 404, 500
+  ... и т.п. . Будет запущен на клиенте, для скрипта подготовлен
+  объект: `window.error_date = {status_code, status_message, url}`, является альтернативой для path_to_error_pages_dir и
+  игнорируется в случае если path_to_error_pages_dir задан - _задается абсолютным путем_.
 
 - ### urls `array`
   Указать можно путь к директории, файлу или имя приложению и его метод. Ограничение для директории/приложения
@@ -31,46 +40,45 @@ $ npm install customs-request
         - **app** `boolean` является ли приложением, если false или не указан, значит это путь к директории/файлу
 
 - ### path_to_app_dir `string`
-  путь к коллекции пользовательских приложений
+  Путь к коллекции пользовательских приложений:
     - Уровень доступа к приложению или конкретному методу приложения устанавливается в конфиге.
     - Вызов метода: `/app_name/method_name?`.
-    - ### db `object`: представление базы данных, объект с методами:
-        - `register_user()`
-            - Аргументы:
-                - `object`
-                    - email* `string`
-                    - password*  `string`,
-                    - token* `string`,
-                    - user_level* `string`,
-                    - ... ( other_field)`string`,
-
-            - Возвращает:
-                - `string` id юзера в случае успеха
-                    - ИЛИ
-                - `boolean` false в противном случае
+- ### db `object`
+    представление базы данных, объект с методами:
+    - `register_user()`
+        - Аргументы:
+            - `object`
+                - email<span style="color:red">*</span> `string`
+                - password<span style="color:red">*</span>  `string`,
+                - token<span style="color:red">*</span> `string`,
+                - user_level<span style="color:red">*</span> `string`,
+                - ... ( other_field)`string`,
+        - Возвращает:
+            - `string` id юзера в случае успеха
+            - **ИЛИ**
+            - `boolean` false в противном случае
+              <br><br/>
+    - `update_user_field()`
+        - Аргументы:
+            - field_name<span style="color:red">*</span> `string`
+            - new_value<span style="color:red">*</span>  `string`,
+            - user_id<span style="color:red">*</span> `string`,
+        - Возвращает:
+            - `boolean`
+                - **true** поле в таблице users обновлено успешно
+                - **false** ошибка обновления
                   <br><br/>
-        - `update_user_field()`
-            - Аргументы:
-                - field_name* `string`
-                - new_value*  `string`,
-                - user_id* `string`,
-
-            - Возвращает:
-                - `boolean`
-                    - **true** поле в таблице users обновлено успешно
-                    - **false** ошибка обновления
-                      <br><br/>
-        - `get_users()`
-            - Возвращает:
-                - `array` массив строк из таблицы users
-                    - `object`
-                        - email* `string`
-                        - password*  `string`,
-                        - token* `string`,
-                        - user_level* `string`,
-                        - ... ( other_field)`string`,
-                - **ИЛИ**
-                - `boolean` false в противном случае
+    - `get_users()`
+        - Возвращает:
+            - `array` массив строк из таблицы users
+              - `object`
+                  - email* `string`
+                  - password*  `string`,
+                  - token* `string`,
+                  - user_level* `string`,
+                  - ... ( other_field)`string`, 
+            - **ИЛИ**
+            - `boolean` false в противном случае
 
 ### Пример файла config
 
