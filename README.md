@@ -11,7 +11,7 @@ $ npm install customs-request
 ## Configuration
 
 - ### main_dir `string`
-  Директория относительно которой будут находиться все файлы проекта, корень проекта - _задается абсолютным путем_.
+  Директория относительно которой будут находиться все файлы проекта, корень проекта: картинки, шаблоны, страницы и т.д. - _задается абсолютным путем_.
 
 - ### path_to_error_pages_dir `string`
   Путь к директории страниц ошибок имя страницы должно соответствовать коду ошибки. Имеет приоритет над
@@ -28,30 +28,34 @@ $ npm install customs-request
   объект: `window.error_date = {status_code, status_message, url}`, является альтернативой для path_to_error_pages_dir и
   игнорируется в случае если path_to_error_pages_dir задан - _задается абсолютным путем_.
 
+
+- ### path_to_app_dir `string`
+  Путь к директории с файлами пользовательских приложений
+    - Уровень доступа к приложению или конкретному методу приложения устанавливается в конфиге.
+    - Вызов метода: `/app_name/method_name?`.
+
 - ### urls `array`
   Указать можно путь к директории, файлу или имя приложению и его метод. Ограничение для директории/приложения
   распространяется на все вложенные файлы и директории/методы, при условии, если вложенный файл или директория/метод не
   указаны отдельно, в таком случае действует указанные ограничение.
     - `objekt`
-        - **value** `string` путь относительно _main_dir_ | имя приложение | имя приложение и метода.
-        - **access_level** **|** **access_level_only** `number` уровень доступа урал: main admin - 0, admin - 1, user -
-          2, не подтвержденный user - 3. Если **access_level**: урл будет доступен от указанного до наивысшего. **
-          access_level_only**: Только указанный. Если access_level не указан доступно для всех посетителей.
+        - **value** `string`  Устанавливает путь относительно корня _main_dir_ к приложению | методу приложения | директории | файлу.
+        - **access_level** **|** **access_level_only** `number` Устанавливает уровень доступа к приложению | методу приложения | директории | 
+          файлу относительно _main_dir_. Всего 4 уровня: 
+          main admin - 0, admin - 1, user -
+          2, не подтвержденный user - 3. Если **access_level**: урл будет доступен от указанного до наивысшего.
+          Если **access_level_only**: Доступно только для указанного уровня. Если **access_level_only** и **access_level** не указан доступно для всех посетителей.
         - **app** `boolean` является ли приложением, если false или не указан, значит это путь к директории/файлу
 
-- ### path_to_app_dir `string`
-  Путь к коллекции пользовательских приложений:
-    - Уровень доступа к приложению или конкретному методу приложения устанавливается в конфиге.
-    - Вызов метода: `/app_name/method_name?`.
 - ### db `object`
     представление базы данных, объект с методами:
     - `register_user()`
         - Аргументы:
             - `object`
-                - email<span style="color:red">*</span> `string`
-                - password<span style="color:red">*</span>  `string`,
-                - token<span style="color:red">*</span> `string`,
-                - user_level<span style="color:red">*</span> `string`,
+                - email* `string`
+                - password*  `string`,
+                - token* `string`,
+                - user_level* `string`,
                 - ... ( other_field)`string`,
         - Возвращает:
             - `string` id юзера в случае успеха
@@ -60,9 +64,9 @@ $ npm install customs-request
               <br><br/>
     - `update_user_field()`
         - Аргументы:
-            - field_name<span style="color:red">*</span> `string`
-            - new_value<span style="color:red">*</span>  `string`,
-            - user_id<span style="color:red">*</span> `string`,
+            - field_name* `string`
+            - new_value*  `string`,
+            - user_id* `string`,
         - Возвращает:
             - `boolean`
                 - **true** поле в таблице users обновлено успешно
@@ -146,8 +150,8 @@ module.exports = config
 
 ```
 
-## REST API
-
+## IDENT API
+Встроенное приложение регистрации и авторизации 
 ### Регистрация пользователя
 
 **Метод POST:** `/ident/register_user?`
@@ -284,15 +288,21 @@ async function handlerServer(request, response) {
 Ваши API должны находится в директории указанной в **config.path_to_app_dir**. Имя файла это имя API, и метод
 соответственно имя метода по которым клиент будет вызывать ваше API. Уровни доступа необходимо прописать в config.
 
-### Аргументы для ваших API:
+### Аргумент для методов ваших API:
 
 - `object`
     - user `object`
         - user_id* `string`,
         - user_level* `string`,
-    - apps `object: <app collection customs-request>`
-    - request `object: node.js<http.IncomingMessage>`
-    - response `object: node.js<http.ServerResponse>`
+    - body `object`
+    - query `object`
+    - req `object: node.js<http.IncomingMessage>`
+    - res `object: node.js<http.ServerResponse>`
+    - url_level `string`
+    - url_level_only `string`
+    - url_value `string`
+    - apps `object`
+    - send `function`
 
 ### Custom метод должен Возвращать:
 
