@@ -1,9 +1,24 @@
 const path = require("path");
-const get_config = require('./lib/resolve.config');
+const get_config = require('./lib/resolve.config'); // Получаем обработанный конфиг
+const devServerPoints = require('./lib/devServerPoints'); // Функция фильтрации и перенаправления запроса на обработку сервер-поинтом для получения данных, нужна только для режима разработки
 const {get_html_container_error_agent, set_path_to_error_agent} = require('./lib/error_req_client');
-const {exists_file} = require('./lib/fs_lite');
+const {exists_file} = require('./lib/fs_lite'); // Метод из мини библиотеки по работе с файлами
+
+const express = require('express');
 const formidable = require('formidable');
-const {log} = require("sharp/lib/libvips");
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
+
+let reEx_check_syntax_url = new RegExp('^(?:\/[а-яА-Яa-zA-Z0-9-_%]+)*(?:\/[а-яА-Яa-zA-Z0-9-#_.%]+)+(?:\\??.*)$');
+let reEx_is_dir = new RegExp('(?:\/[_а-яА-Яa-zA-Z0-9-]+\/?$)|(?:^\/$)');
+let reEx_bad = new RegExp('\\.{2,}', 'gi');
+let main_dir, // config
+    urls, // config | db
+    apps, // config
+    prefix, // config
+    token_name, // config,
+    users, // config
+    client_routes
 
 function get_form_data(req, maxFileSize = 50 * 1024 * 1024) {
     return new Promise((resolve, reject) => {
@@ -21,36 +36,9 @@ function get_form_data(req, maxFileSize = 50 * 1024 * 1024) {
 
     })
 }
-
-function _log(o) {
-    console.log('#######################################');
-    for (const oKey in o) {
-        if (
-            oKey !== 'req' &&
-            oKey !== 'res' &&
-            typeof oKey !== 'function'
-        ) {
-            console.log(oKey + ' = ' + JSON.stringify(o[oKey]))
-        }
-    }
-    console.log('#######################################');
-}
-
-let reEx_check_syntax_url = new RegExp('^(?:\/[а-яА-Яa-zA-Z0-9-_%]+)*(?:\/[а-яА-Яa-zA-Z0-9-#_.%]+)+(?:\\??.*)$');
-let reEx_is_dir = new RegExp('(?:\/[_а-яА-Яa-zA-Z0-9-]+\/?$)|(?:^\/$)');
-let reEx_bad = new RegExp('\\.{2,}', 'gi');
-
-let main_dir, // config
-    urls, // config | db
-    app, // config
-    prefix, // config
-    token_name, // config,
-    users, // config
-    client_routes
-
-async function method_call(users, app, name_app, name_method) {
+async function method_call(users, apps, name_app, name_method) {
     try {
-        this.result = await app[name_app][name_method]({
+        this.result = await apps[name_app][name_method]({
             user: this.user,
             req: this.req,
             res: this.res,
@@ -66,7 +54,7 @@ async function method_call(users, app, name_app, name_method) {
             main_dir,
             token_name,
             users,
-            apps: app,
+            apps,
             send: function (code, message, data, send_agent) {
                 this.status_code = code;
                 this.status_message = message;
@@ -81,23 +69,35 @@ async function method_call(users, app, name_app, name_method) {
     }
 }
 
+const app = express();
+app.use(cookieParser());
+app.use(bodyParser.urlencoded({extended: false}));
+app.use(bodyParser.json());
+
+
 
 class Client {
     static async set_config(configuration) {
-        let data = await get_config(configuration);
-        set_path_to_error_agent(data.path_to_error_agent)
-        main_dir = data.main_dir;
-        app = data.app;
-        urls = data.urls;
+        let config = await get_config(configuration);
+        set_path_to_error_agent(config.path_to_error_agent)
+        main_dir = config.main_dir;
+        apps = config.app;
+        urls = config.urls;
         token_name = data.token_name;
         client_routes = data.client_routes;
-        users = data.users;
-        prefix = data.prefix;
+        users = config.users;
+        prefix = config.prefix;
+    }
+
+    static start() {
+        app.listen(port)
     }
 
     static get_user_list() {
         return users;
     }
+
+    static devServerPoints = devServerPoints;
 
     constructor(request, response) {
         this.req = request
@@ -203,7 +203,7 @@ class Client {
     }
 
     async _check_user() {
-        let user = await app.ident._is_user({
+        let user = await apps.ident._is_user({
             cookie: this.cookie,
         });
         let {user_id, asses_level} = user || {};
@@ -235,12 +235,12 @@ class Client {
             if (res &&
                 res[0] &&
                 res[1] &&
-                app[res[0]] &&
-                typeof app[res[0]][res[1]] === 'function'
+                apps[res[0]] &&
+                typeof apps[res[0]][res[1]] === 'function'
             ) {
                 name_app = res[0];
                 name_method = res[1];
-                await method_call.call(this, users, app, name_app, name_method)
+                await method_call.call(this, users, apps, name_app, name_method)
                 return false;
             }
             this._wmc(`method not found`, 404);
@@ -251,7 +251,7 @@ class Client {
         ) {
             name_app = this.method_app[0];
             name_method = this.method_app[1];
-            await method_call.call(this, users, app, name_app, name_method)
+            await method_call.call(this, users, apps, name_app, name_method)
             if (this.result && this.result.type === 'url') {
                 this.url_value = this.result.url;
                 this.result = null;
@@ -291,7 +291,7 @@ class Client {
     deep_resolve_method() {
         let path_app = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi)
         if (path_app && path_app.length) {
-            this.method_app = app[path_app[0]]
+            this.method_app = apps[path_app[0]]
             for (let i = 1; i < path_app.length; i++) {
                 if (this.method_app && this.method_app[path_app[i]]) this.method_app = this.method_app[path_app[i]];
                 else this.method_app = null;
