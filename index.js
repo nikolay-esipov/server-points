@@ -3,7 +3,6 @@ const get_config = require('./lib/resolve.config');
 const {get_html_container_error_agent, set_path_to_error_agent} = require('./lib/error_req_client');
 const {exists_file} = require('./lib/fs_lite');
 const formidable = require('formidable');
-const {log} = require("sharp/lib/libvips");
 
 function get_form_data(req, maxFileSize = 50 * 1024 * 1024) {
     return new Promise((resolve, reject) => {
@@ -12,7 +11,7 @@ function get_form_data(req, maxFileSize = 50 * 1024 * 1024) {
         });
         formData.parse(req, (err, fields, files) => {
             if (err) {
-                console.log(err);
+                console.log("-> err", err);
                 reject(false);
                 return;
             }
@@ -20,20 +19,6 @@ function get_form_data(req, maxFileSize = 50 * 1024 * 1024) {
         });
 
     })
-}
-
-function _log(o) {
-    console.log('#######################################');
-    for (const oKey in o) {
-        if (
-            oKey !== 'req' &&
-            oKey !== 'res' &&
-            typeof oKey !== 'function'
-        ) {
-            console.log(oKey + ' = ' + JSON.stringify(o[oKey]))
-        }
-    }
-    console.log('#######################################');
 }
 
 let reEx_check_syntax_url = new RegExp('^(?:\/[а-яА-Яa-zA-Z0-9-_%]+)*(?:\/[а-яА-Яa-zA-Z0-9-#_.%]+)+(?:\\??.*)$');
