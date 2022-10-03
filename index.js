@@ -1,8 +1,11 @@
 const path = require("path");
-const get_config = require('./lib/resolve.config');
+const resolveConfig= require('./lib/resolve.config');
 const {get_html_container_error_agent, set_path_to_error_agent} = require('./lib/error_req_client');
 const {exists_file} = require('./lib/fs_lite');
 const formidable = require('formidable');
+const express = require('express');
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
 
 function get_form_data(req, maxFileSize = 50 * 1024 * 1024) {
     return new Promise((resolve, reject) => {
@@ -27,7 +30,7 @@ let reEx_bad = new RegExp('\\.{2,}', 'gi');
 
 let main_dir, // config
     urls, // config | db
-    app, // config
+    apis, // config
     prefix, // config
     token_name, // config,
     users, // config
@@ -66,22 +69,34 @@ async function method_call(users, app, name_app, name_method) {
     }
 }
 
+async function setConfig(configuration) {
+    let data = await resolveConfig(configuration);
+    set_path_to_error_agent(data.path_to_error_agent)
+    main_dir = data.main_dir;
+    apis = data.apps;
+    urls = data.urls;
+    token_name = data.token_name;
+    client_routes = data.client_routes;
+    users = data.users;
+    prefix = data.prefix;
+}
+
+async function patchApp (app) {
+    app.use(cookieParser());
+    app.use(bodyParser.urlencoded({ extended: false }));
+    app.use(bodyParser.json());
+}
 
 class Client {
-    static async set_config(configuration) {
-        let data = await get_config(configuration);
-        set_path_to_error_agent(data.path_to_error_agent)
-        main_dir = data.main_dir;
-        app = data.app;
-        urls = data.urls;
-        token_name = data.token_name;
-        client_routes = data.client_routes;
-        users = data.users;
-        prefix = data.prefix;
-    }
-
-    static get_user_list() {
-        return users;
+    static async startServer(config, app) {
+        await resolveConfig(config);
+        if (app) {
+            await patchApp(app);
+            return await startDevServer(config, app);
+        }
+        app = express();
+        await patchApp(app);
+        app.listen(port);
     }
 
     constructor(request, response) {
@@ -112,7 +127,6 @@ class Client {
             this.res.send(this.result)
         };
     }
-
     async init() {
         (
             this._check_url() &&
@@ -188,7 +202,7 @@ class Client {
     }
 
     async _check_user() {
-        let user = await app.ident._is_user({
+        let user = await apis.ident._is_user({
             cookie: this.cookie,
         });
         let {user_id, asses_level} = user || {};
@@ -220,12 +234,12 @@ class Client {
             if (res &&
                 res[0] &&
                 res[1] &&
-                app[res[0]] &&
-                typeof app[res[0]][res[1]] === 'function'
+                apis[res[0]] &&
+                typeof apis[res[0]][res[1]] === 'function'
             ) {
                 name_app = res[0];
                 name_method = res[1];
-                await method_call.call(this, users, app, name_app, name_method)
+                await method_call.call(this, users, apis, name_app, name_method)
                 return false;
             }
             this._wmc(`method not found`, 404);
@@ -236,7 +250,7 @@ class Client {
         ) {
             name_app = this.method_app[0];
             name_method = this.method_app[1];
-            await method_call.call(this, users, app, name_app, name_method)
+            await method_call.call(this, users, apis, name_app, name_method)
             if (this.result && this.result.type === 'url') {
                 this.url_value = this.result.url;
                 this.result = null;
@@ -276,7 +290,7 @@ class Client {
     deep_resolve_method() {
         let path_app = this.url_value.match(/[a-zA-Z0-9-_]+(?=\?|\/)/gi)
         if (path_app && path_app.length) {
-            this.method_app = app[path_app[0]]
+            this.method_app = apis[path_app[0]]
             for (let i = 1; i < path_app.length; i++) {
                 if (this.method_app && this.method_app[path_app[i]]) this.method_app = this.method_app[path_app[i]];
                 else this.method_app = null;
@@ -307,4 +321,4 @@ class Client {
 
 }
 
-module.exports = Client
+module.exports = {Client, setConfig}
