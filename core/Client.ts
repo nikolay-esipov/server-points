@@ -33,7 +33,6 @@ class Client implements IClient {
         config = aConfig
     }
 
-
     public req = IncomingMessage;
     public ip: string;
     public protocol: string;

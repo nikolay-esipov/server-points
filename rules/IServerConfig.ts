@@ -3,7 +3,7 @@ import {IGetLevelAccessByToken} from "./IIdentApp";
 
 type accessValues = 'free' | 'close' | number;
 
-interface accessLevels {
+interface IAccessLevels {
     [accessName: string]: accessValues
 }
 
@@ -40,7 +40,6 @@ interface IUserConfig {
     pathToRootDir: string,
     accessAreas: IAccessAreas[],
     pathToApps: string,
-    maxFileSize?: number,
     getLevelAccessByToken: IGetLevelAccessByToken,
     tokenName: string,
     devRoutersRgExp?: RegExp[]
@@ -62,6 +61,6 @@ export {
     IConfig,
     IUser,
     IConfigUrls,
-    accessLevels,
+    IAccessLevels,
     accessValues
 }

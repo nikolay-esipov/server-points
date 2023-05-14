@@ -15,7 +15,6 @@ class Config implements IConfig {
     apps: {[app: string]: {}} = {}
     accessAreas
     pathToApps
-    maxFileSize
     pathToRootDir
     getLevelAccessByToken
     tokenName
@@ -25,7 +24,6 @@ class Config implements IConfig {
         this.port = config.port
         this.accessAreas = config.accessAreas
         this.pathToApps = config.pathToApps
-        this.maxFileSize = config.maxFileSize
         this.getLevelAccessByToken = config.getLevelAccessByToken
         this.tokenName = config.tokenName
         this.pathToRootDir = config.pathToRootDir

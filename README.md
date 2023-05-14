@@ -1,315 +1,169 @@
-# customs-request
+# server-points
+Простой сервер на nodejs с авторизацией по токену, поддержкой уровней доступа, и поддержкой сервера разработки.
+Вся настройка сервера осуществляется в конфиге. При работе с devServer файлы конфигурации vue.config.js или webpack.config.js
+должны экспортировать async function.
+
+```ts
+
+// server.ts
+
+import {startServer} from 'server-points';
+import config from './server.config';
+
+(async _=> {
+    config = await prepareConfig(config);
+    await startServer(config);
+})()
+
+```
 
 ## Installation
 
 ### Using npm:
 
 ```bash
-$ npm install customs-request
+$ npm install server-points
 ```
 
 ## Configuration
 
-- ### main_dir `string`
-  Директория относительно которой будут находиться все файлы проекта, корень проекта: картинки, шаблоны, страницы и т.д. - _задается абсолютным путем_.
+- ### pathToRootDir `string`*
+  Корневая директория относительно которой будут находиться все файлы проекта: index.html, css, js, картинки, шаблоны,
+  страницы ... и т.д. - _задается абсолютным путем_.
 
-- ### path_to_error_pages_dir `string`
-  Путь к директории страниц ошибок имя страницы должно соответствовать коду ошибки. Имеет приоритет над
-  path_to_error_agent - _задается абсолютным путем_.
-    - 404.html
-    - 503.html
-    - 401.html
-    - ...
+- ### pathToApps `string`
+  Путь к директории с файлами приложений.
 
+- ### accessAreas `array`*
+  Массив Областей доступа.
+    - **area** `objekt`* - объект типа IAccessAreas, Области доступа
+        - **urls** `array`*
+            - **url** `object`*
+                - **value** `string` может быть в двух вариантах:
 
-- ### path_to_error_agent `string`
-  Путь к error_agent - это скрипт, который отправляется в HTML контейнере, в случае возникновения ошибок 401, 404, 500
-  ... и т.п. . Будет запущен на клиенте, для скрипта подготовлен
-  объект: `window.error_date = {status_code, status_message, url}`, является альтернативой для path_to_error_pages_dir и
-  игнорируется в случае если path_to_error_pages_dir задан - _задается абсолютным путем_.
+                1. Путь относительно корневой директории _pathToRootDir_ к файлу или директории. Например: _
+                   /assets/users/images/avatar/main.img_
+                2. Имя приложения и метода. Например: _/api_name/method_name_
 
+                - **app**  `object | boolean` - может быть объектом или true. Если не указано значит урл всегда путь к
+                  файлу
+                    - **appName**
+                    - **methodName**
+                - **maxFileSize** `number` - максимальный размер файла в байтах для этого урла
+        - **accessLevel** `'free' | 'close' | number` Устанавливает уровень доступа урла от 0, где 0 самый высокий
+          уровень доступа. Например, при уровне урла 2 и при минимальном уровне 4 доступ будет у 2, 1 и 0.
+        - **accessLevelOnly** `'free' | 'close' | number` Устанавливает уровень доступа урла от, 0 где 0 самый высокий
+          уровень доступа. Например, при уровне урла 2 и при минимальном уровне 4 доступ будет только у 2.
 
-- ### path_to_app_dir `string`
-  Путь к директории с файлами пользовательских приложений
-    - Уровень доступа к приложению или конкретному методу приложения устанавливается в конфиге.
-    - Вызов метода: `/app_name/method_name?`.
+- ### getLevelAccessByToken `function`*
+  Функция типа IGetLevelAccessByToken. Должна возвращать уровень доступа юзера по токену или false если токен не
+  корректный или не передан.
 
-- ### urls `array`
-  Указать можно путь к директории, файлу или имя приложению и его метод. Ограничение для директории/приложения
-  распространяется на все вложенные файлы и директории/методы, при условии, если вложенный файл или директория/метод не
-  указаны отдельно, в таком случае действует указанные ограничение.
-    - `objekt`
-        - **value** `string`  Устанавливает путь относительно корня _main_dir_ к приложению | методу приложения | директории | файлу.
-        - **access_level** **|** **access_level_only** `number` Устанавливает уровень доступа к приложению | методу приложения | директории | 
-          файлу относительно _main_dir_. Всего 4 уровня: 
-          main admin - 0, admin - 1, user -
-          2, не подтвержденный user - 3. Если **access_level**: урл будет доступен от указанного до наивысшего.
-          Если **access_level_only**: Доступно только для указанного уровня. Если **access_level_only** и **access_level** не указан доступно для всех посетителей.
-        - **app** `boolean` является ли приложением, если false или не указан, значит это путь к директории/файлу
+- ### tokenName `string`*
+  Имя cookie ключа для токена авторизации.
 
-- ### db `object`
-    представление базы данных, объект с методами:
-    - `register_user()`
-        - Аргументы:
-            - `object`
-                - email* `string`
-                - password*  `string`,
-                - token* `string`,
-                - user_level* `string`,
-                - ... ( other_field)`string`,
-        - Возвращает:
-            - `string` id юзера в случае успеха
-            - **ИЛИ**
-            - `boolean` false в противном случае
-              <br><br/>
-    - `update_user_field()`
-        - Аргументы:
-            - field_name* `string`
-            - new_value*  `string`,
-            - user_id* `string`,
-        - Возвращает:
-            - `boolean`
-                - **true** поле в таблице users обновлено успешно
-                - **false** ошибка обновления
-                  <br><br/>
-    - `get_users()`
-        - Возвращает:
-            - `array` массив строк из таблицы users
-              - `object`
-                  - email* `string`
-                  - password*  `string`,
-                  - token* `string`,
-                  - user_level* `string`,
-                  - ... ( other_field)`string`, 
-            - **ИЛИ**
-            - `boolean` false в противном случае
+- ### port `number`
+  Номер порта если не указан берется из process.env.PORT или 3033.
 
-### Пример файла config
+- ### devRoutersRgExp `RegExp[]`
+  Массив регулярных выражений для определения урлов для devServer, при совпадении будет перенаправлен на текущий сервер
+  - server-point .
 
+## APPS
+Методы получают аргумент типа IClient. Все файлы .js расположенные в директории pathToApps и экспортирующие объекты будут инициализированы.
+
+## Пример файла config
 ```js
 // server.config.js
+import path from "path";
+import DB from "/db";
 
-const path = require("path");
-const db = require('./db'); //Объект с метадами для записи и чтения таблицы users в БД.
-const config = {
-    main_dir: path.join(__dirname, '/src/assets'), // main project directory. Use full path - __dirname, 'current_dir'
-    error_pages_dir: path.join(__dirname, '/src/assets/pages_errors'), // directory with error pages: 404.html, 401.html, ..., .
-    urls: [
+enum accessLevels {
+    'system' = 0,
+    'superAdmin' = 1,
+    'admin' = 2,
+    'user' = 3,
+    'free' = 'free',
+    'close' = 'close',
+}
+
+const Config: IUserConfig = {
+    pathToRootDir: path.join(__dirname, './projects/maysite'),
+    pathToApps: path.join(__dirname, './projects/apps'),
+    async getLevelAccessByToken(token: string | undefined) {
+        const level = await DB.cash.getLevelByToken(token);
+        if (typeof level === 'number' && level >= 0) return level;
+        return false;
+    },
+    tokenName: 'may_secret_key_token_name',
+    accessAreas: [
         {
-            value: '/sys_app',
-            access_level: 1,
-            app: true
-            // Доступны все методы приложения sys_app для пользователей с уровнем 1, 0 (admin, main_admin)
+            accessLevel: accessLevels.superAdmin,
+            urls: [
+                {
+                    value: '/mayApp/secret_method',
+                    app: true
+                },
+                {
+                    value: '/assets/images/superImages',
+                },
+            ]
         },
         {
-            value: '/sys_app/list_users',
-            access_level: 2,
-            app: true
-            // Метод list_users приложения sys_app доступен  пользователей с уровнем 2, 1, 0 (user, admin, main_admin)
+            accessLevel: accessLevels.admin,
+            urls: [
+                {
+                    value: '/mayApp',
+                    app: true
+                    // все методы приложения mayApp кроме super_admin_method будут доступны для admin и выше
+                },
+                {
+                    value: '/assets/images',
+                    // все файлы и папки в /assets/images кроме /assets/images/superImages будут доступны для admin и выше
+                },
+            ]
         },
         {
-            value: '/users',
-            access_level_only: 2,
-            app: true
-            // Директория users доступно только level 2 (user)
+            accessLevelOnly: accessLevels.admin,
+            urls: []
         },
         {
-            value: '/users/img_publick',
-            app: true
-            // Директория users доступно только level 2 (user), но под дириктория img_publick доступна всем 
+            accessLevel: accessLevels.user,
+            urls: [
+                {
+                    value: '/may_api/set_admin',
+                    app: true
+                },
+            ]
         },
         {
-            value: '/users/statistic.json',
-            access_level: 1,
-            app: true
-            // Директория users доступно только level 2 (user), 
-            // но файл /users/statistic.json' доступен level 1, 0 (admin, main_admin)
-        },
-        {
-            value: '/free_app',
-            app: true,
-            // Приложение free_app доступно всем
-        },
-        {
-            value: '/free_app/num_call',
-            access_level: 1,
-            app: true,
-            // Приложение free_app доступно всем, но его метод num_call доступен только 1 и 0 - admin, main_admin
+            accessLevel: accessLevels.free,
+            urls: [
+                {
+                    value: '/dir1/dir2/blabla?value=1&value2=2',
+                    app: {
+                        appName: 'appWork',
+                        methodName: 'resolve',
+                    }
+                },
+                {
+                    value: '/dir3/dir4/anyfile.txt',
+                    app: {
+                        appName: 'appWork',
+                        methodName: 'resolve',
+                    }
+                },
+                // Оба урла будут обработаны приложением appWork, методом resolve  
+            ]
         },
     ],
-    path_to_app_dir: path.join(__dirname, './apps'),
-    db
-
-    // db.register_user()
-    // db.update_user_field()
-    // db.get_users()
+    port: 3000,
 }
 
-module.exports = config
+export = Config
 
 
 ```
-
-## IDENT API
-Встроенное приложение регистрации и авторизации 
-### Регистрация пользователя
-
-**Метод POST:** `/ident/register_user?`
-
-```js
-//Клиент для регистрации должен придоставить форму с обязательными полями:
-
-body = {
-    email: 'name@email.com',
-    password: '123_password',
-    answer_antibot: "Фраза отвте на антибот",
-    id_task_antibot: "KYT76K",
-}
-
-response = "ок"
-```
-
-**Порядок:**
-
-- Клиент
-    1) запрашивает задание антибот или пользуется ранее запрошенным (у каждого решения **два** использования)
-    2) представляет пустую форму пользователю для регистрации
-    3) после ввода отправляет запрос на сервер, ответ:
-        - 200 ок - все ок
-        - 401 email_taken _- занят уже_
-        - 401 email_syntax_error _- не правильный синтаксис у e-mail_
-        - 401 password_syntax_error _- не правильный синтаксис у password_
-        - 401 check_bot_error _- не прошел проверку на бот_
-
-### Авторизация пользователя
-
-**Метод POST:** `/ident/auth_user?`
-
-```js
-//Клиент для авторизации должен придоставить форму с полями:
-
-body = {
-    email: 'name@email.com',
-    password: '123_password',
-    answer_antibot: "Фраза отвте на антибот",
-    id_task_antibot: "KYT76K",
-}
-
-response = "ок"
-```
-
-**Порядок:**
-
-- Клиент
-    1) запрашивает задание антибот или пользуется ранее запрошенным (у каждого решения **два** использования)
-    2) представляет пустую форму пользователю для авторизации
-    3) после ввода отправляет запрос на сервер, ответ:
-        - 200 ок - все ок установлен новый токен
-        - 401 auth_error _- не верный логи или пароль_
-        - 401 check_bot_error _- не прошел проверку на бот_
-
-### Проверка e-mail
-
-**Метод GET:** `/ident/exist_user?`
-
-```js
-//Клиент для авторизации должен придоставить форму с полями:
-
-body = {
-    email: 'name@email.com',
-    answer_antibot: "Фраза отвте на антибот",
-    id_task: "KYT76K",
-}
-```
-
-**Порядок:**
-
-- Клиент
-    1) запрашивает задание антибот или пользуется ранее запрошенным (у каждого решения **два** использования)
-    2) представляет пустую форму пользователю для авторизации
-    3) после ввода отправляет запрос на сервер, ответ:
-
-        - 200 ок - все ок
-        - 401 email_taken _- занят уже_
-        - 401 email_syntax_error _- не правильный синтаксис у e-mail_
-        - 401 password_syntax_error _- не правильный синтаксис у password_
-        - 401 check_bot_error _- не прошел проверку на бот_
-
-### Получить задания для антибот
-
-**Метод GET:** `/ident/get_antibot_task?`
-
-```js
-// Сервер присылает задачку на антибот в виде ссылки н картинку и номер задачи, ответ можно использовать два раза:
-
-response = {
-    task: "ссылка на картинку с заданием",
-    id_task: "KYT76K",
-}
-```
-
-**Порядок:**
-
-- Клиент запрашивает задание антибот (у каждого решения **два** использования):
-    - 200 ок _- все ок_
-
-## Usage
-
-```js
-
-// server.js
-
-const Client = require('customs-request');
-const config = require('./config');
-Client.set_config(config);
-
-//...
-
-async function handlerServer(request, response) {
-    let client = new Client(request, response);
-    await client.init();
-}
-
-//...
-```
-
-## Data Base
-
-### users
-
-- id
-- email
-- password
-- token
-- level
-
-## Customs API
-
-Ваши API должны находится в директории указанной в **config.path_to_app_dir**. Имя файла это имя API, и метод
-соответственно имя метода по которым клиент будет вызывать ваше API. Уровни доступа необходимо прописать в config.
-
-### Аргумент для методов ваших API:
-
-- `object`
-    - user `object`
-        - user_id* `string`,
-        - user_level* `string`,
-    - body `object`
-    - query `object`
-    - req `object: node.js<http.IncomingMessage>`
-    - res `object: node.js<http.ServerResponse>`
-    - url_level `string`
-    - url_level_only `string`
-    - url_value `string`
-    - apps `object`
-    - send `function`
-
-### Custom метод должен Возвращать:
-
-Статус код и статус сообщение уже определены, так же их можно изменить через response, кроме это можно отправить ответ
-или просто вернуть его из метода. Если метод ни чего не send и не return, тогда, code 200, send пустая строка
-
-- `string(JSON)`: Данные, для отправки клиенту
 
 ## License
 

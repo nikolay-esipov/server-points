@@ -1,16 +1,14 @@
-import {IGetLevelAccessByToken} from "./rules/IIdentApp";
-
 declare const __dirname: any;
-import {accessLevels, IUserConfig} from "./rules/IServerConfig";
+import {IUserConfig} from "./rules/IServerConfig";
 // @ts-ignore
 import path from "path";
 
-const areas: accessLevels =  {
-    'superAdmin': 0,
-    'admin': 1,
-    'user': 2,
-    'free': 'free',
-    'close': 'close',
+enum accessLevels {
+    'superAdmin'= 0,
+    'admin'= 1,
+    'user'= 2,
+    'free'= 'free',
+    'close'= 'close',
 }
 
 
@@ -18,13 +16,14 @@ const Config: IUserConfig = {
     pathToApps: path.join(__dirname, './test/apps'),
     pathToRootDir: path.join(__dirname, './test'),
     async getLevelAccessByToken(token: string | undefined) {
+
         if (token && token.length>10) return 2;
         return false;
     },
     tokenName: 'auth',
     accessAreas: [
         {
-            accessLevel: areas.superAdmin,
+            accessLevel: accessLevels.superAdmin,
             urls: [
                 {
                     value: '/anypath/anysubpath',
@@ -36,7 +35,7 @@ const Config: IUserConfig = {
             ]
         },
         {
-            accessLevel: areas.admin,
+            accessLevel: accessLevels.admin,
             urls: [
                 {
                     value: '/mpkeys/set_wb',
@@ -45,11 +44,11 @@ const Config: IUserConfig = {
             ]
         },
         {
-            accessLevelOnly: areas.admin,
+            accessLevelOnly: accessLevels.admin,
             urls: []
         },
         {
-            accessLevel: areas.user,
+            accessLevel: accessLevels.user,
             urls: [
                 {
                     value: '/may_api/set_admin',
@@ -58,7 +57,7 @@ const Config: IUserConfig = {
             ]
         },
         {
-            accessLevel: areas.free,
+            accessLevel: accessLevels.free,
             urls: [
                 {
                     value: '/may_api',
