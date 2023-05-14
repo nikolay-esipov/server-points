@@ -1,6 +1,9 @@
 
 const db = require('./ident_db');
+const path = require('path');
+
 const config = {
+    pathToApps: path.join(__dirname, './services'),
     main_dir: '/home/cat_the_code/projects/streamttgames.com/dist',
     path_to_error_agent: '/erro_pages/error_agent.js',
     prefix: 'sub_service',

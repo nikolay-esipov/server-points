@@ -1,15 +1,17 @@
 {
-  "name": "customs-request",
+  "name": "server-points",
   "version": "0.0.1",
-  "description": "leter",
+  "description": "",
   "main": "index.js",
-  "devDependencies": {},
-  "dependencies": {
-    "get_token_char": "1.0.0"
-  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "Nikolay Esipov",
-  "license": "MIT"
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "formidable": "^2.1.1",
+    "fslite": "0.0.1",
+    "get_token_char": "^1.0.0",
+    "mime": "^3.0.0"
+  }
 }
