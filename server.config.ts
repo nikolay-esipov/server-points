@@ -15,10 +15,14 @@ enum accessLevels {
 const Config: IUserConfig = {
     pathToApps: path.join(__dirname, './test/apps'),
     pathToRootDir: path.join(__dirname, './test'),
-    async getLevelAccessByToken(token: string | undefined) {
-
-        if (token && token.length>10) return 2;
-        return false;
+    async getUserByToken(token: string | undefined) {
+        if (token && token.length>10) {
+            return {
+                level: 2,
+                id: 17
+            };
+        }
+        return false
     },
     tokenName: 'auth',
     accessAreas: [

@@ -16,7 +16,13 @@ class Config implements IConfig {
     accessAreas
     pathToApps
     pathToRootDir
-    getLevelAccessByToken
+    redirects?: [
+        {
+            origin: string | string[]
+            target: string
+        }
+    ]
+    getUserByToken
     tokenName
 
     constructor(config: IUserConfig) {
@@ -24,9 +30,10 @@ class Config implements IConfig {
         this.port = config.port
         this.accessAreas = config.accessAreas
         this.pathToApps = config.pathToApps
-        this.getLevelAccessByToken = config.getLevelAccessByToken
+        this.getUserByToken = config.getUserByToken
         this.tokenName = config.tokenName
         this.pathToRootDir = config.pathToRootDir
+        this.redirects = config.redirects
     }
 
     public static async createConfig(userConfig: IUserConfig): Promise<IConfig> {
@@ -41,98 +48,30 @@ class Config implements IConfig {
         await this.addAppList()
     }
 
-/*    private addIdentUrls() {
-        this.urls = {
-            "/ident/register": {
-                app: {
-                    appName: 'ident',
-                    methodName: 'register',
+/*    private getRedirectsPath(configUrl: string): string[] | '' {
+        let currUrl: string | boolean = false;
+        let regUrl = new RegExp(`^${configUrl}.*`, 'i');
+        if (this.redirects && this.redirects.length) {
+            for (const redirect of this.redirects) {
+                if(regUrl.test(redirect.origin) && (!currUrl || redirect.origin.length > currUrl.length)) {
+                    currUrl = configUrl;
                 }
-            },
-            '/ident/auth': {
-                app: {
-                    appName: 'ident',
-                    methodName: 'auth',
-                }
-            },
-            '/ident/check_auth': {
-                app: {
-                    appName: 'ident',
-                    methodName: 'check_auth',
-                }
-            },
-            '/ident/check_email': {
-                app: {
-                    appName: 'ident',
-                    methodName: 'check_email',
-                }
-            },
-        }
-        const config = this
-        this.apps.ident = {
-            async register(client: IClient) {
-                if (client.fields) {
-                    const res: IHTTPResponse = await config.identApp.register(client);
-                    return client.send(res);
-                }
-                client.send({
-                    statusCode: 400,
-                    statusMessage: 'empty_fields'
-                })
-            },
-            async auth(client: IClient) {
-                if (client.fields) {
-                    const res: IHTTPResponse = await config.identApp.auth(client);
-                    return client.send(res);
-                }
-                client.send({
-                    statusCode: 400,
-                    statusMessage: 'empty_fields'
-                })
-            },
-            async check_auth(client: IClient) {
-                let statusCode= 400,
-                    statusMessage= 'empty_fields';
-                if (client.fields) {
-                    const res = await config.identApp.check_auth(client);
-                    if (res) {
-                        statusCode = 200;
-                        statusMessage = 'ok'
-                    } else {
-                        statusCode = 401;
-                        statusMessage = 'bad_token'
-                    }
-                }
-                return client.send({
-                    statusCode,
-                    statusMessage
-                });
-            },
-        }
-        if (config.identApp.check_email) {
-            this.apps.ident.check_email = async function (client: IClient) {
-                if (client.fields) {
-                    const res: IHTTPResponse = await config.identApp.check_email(client);
-                    return client.send(res);
-                }
-                client.send({
-                    statusCode: 400,
-                    statusMessage: 'empty_fields'
-                })
             }
         }
+        return ''
     }*/
+
     private createUrls() {
-        for (const route of this.accessAreas) {
-            route.urls.forEach(url => {
+        for (const area of this.accessAreas) {
+            area.urls.forEach(url => {
                 let accessLevel = 'close';
                 // @ts-ignore
-                if (typeof route.accessLevel === "number" &&
-                    (!isNaN(route.accessLevel)) ||
-                    route.accessLevel === 'free'
+                if (typeof area.accessLevel === "number" &&
+                    (!isNaN(area.accessLevel)) ||
+                    area.accessLevel === 'free'
                 ) {
                     // @ts-ignore
-                    accessLevel = route.accessLevel
+                    accessLevel = area.accessLevel
                 }
                 // @ts-ignore
                 let urlValue = url.value || url;
@@ -141,7 +80,9 @@ class Config implements IConfig {
                     maxFileSize: url.maxFileSize || false,
                     // @ts-ignore
                     accessLevel,
-                    accessLevelOnly: route.accessLevelOnly,
+                    accessLevelOnly: area.accessLevelOnly,
+                    // @ts-ignore
+                    redirect: url.redirect,
                 }
                 // @ts-ignore
                 if (url.app) {
@@ -162,7 +103,6 @@ class Config implements IConfig {
                     }
                 }
                 // @ts-ignore
-                console.log(url.value);
             })
         }
     }

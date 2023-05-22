@@ -1,6 +1,7 @@
+import {IUser} from "./IServerConfig";
 
-interface IGetLevelAccessByToken {
-    (token: string | undefined): Promise<number | false>,
+interface IGetUserByToken {
+    (token: string | undefined): Promise<IUser | false>,
 }
 
-export {IGetLevelAccessByToken}
+export {IGetUserByToken}

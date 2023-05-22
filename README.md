@@ -55,8 +55,8 @@ $ npm install server-points
         - **accessLevelOnly** `'free' | 'close' | number` Устанавливает уровень доступа урла от, 0 где 0 самый высокий
           уровень доступа. Например, при уровне урла 2 и при минимальном уровне 4 доступ будет только у 2.
 
-- ### getLevelAccessByToken `function`*
-  Функция типа IGetLevelAccessByToken. Должна возвращать уровень доступа юзера по токену или false если токен не
+- ### getUserByToken `function`*
+  Функция типа IGetUserByToken. Должна возвращать объект типа IUser по токену или false если токен не
   корректный или не передан.
 
 - ### tokenName `string`*
@@ -74,7 +74,7 @@ $ npm install server-points
 
 ## Пример файла config
 ```js
-// server.config.js
+// server.config.ts
 import path from "path";
 import DB from "/db";
 
@@ -90,9 +90,9 @@ enum accessLevels {
 const Config: IUserConfig = {
     pathToRootDir: path.join(__dirname, './projects/maysite'),
     pathToApps: path.join(__dirname, './projects/apps'),
-    async getLevelAccessByToken(token: string | undefined) {
-        const level = await DB.cash.getLevelByToken(token);
-        if (typeof level === 'number' && level >= 0) return level;
+    async getUserByToken(token: string | undefined): IUser {
+        const user: IUser = await DB.cash.getLevelByToken(token);
+        if (typeof user.accessLevel === 'number' && user.accessLevel >= 0) return user;
         return false;
     },
     tokenName: 'may_secret_key_token_name',

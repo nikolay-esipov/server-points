@@ -1,14 +1,30 @@
 {
   "name": "server-points",
-  "version": "0.0.1",
+  "version": "0.0.22",
   "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "author": "",
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/nikolay-esipov/server-points"
+  },
+  "keywords": [
+    "server",
+    "simple server"
+  ],
+  "funding": {
+    "url": "https://github.com/nikolay-esipov/server-points"
+  },
+  "bugs": {
+    "url": "https://github.com/nikolay-esipov/server-points"
+  },
+  "homepage": "https://github.com/nikolay-esipov/server-points",
+  "author": "Nikolay Esipov <n.esipov@yandex.ru>",
   "license": "MIT",
   "dependencies": {
+    "cookie":"0.5.0",
     "formidable": "^2.1.1",
     "fslite": "0.0.1",
     "get_token_char": "^1.0.0",

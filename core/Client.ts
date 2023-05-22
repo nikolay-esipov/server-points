@@ -1,4 +1,4 @@
-import {IGetLevelAccessByToken} from "../rules/IIdentApp";
+import {IGetUserByToken} from "../rules/IIdentApp";
 
 declare function require(name: string): any;
 
@@ -16,9 +16,11 @@ import mime from 'mime'
 import path from "path";
 import IClient from "../rules/IClient";
 import IHTTPResponse from "../rules/IHTTPResponse";
-import {accessValues, IConfig, IConfigUrls} from "../rules/IServerConfig";
+import {accessValues, IConfig, IConfigUrls, IUser} from "../rules/IServerConfig";
+// @ts-ignore
+import * as Buffer from "buffer";
 
-let getLevelAccessByToken: IGetLevelAccessByToken
+let getUserByToken: IGetUserByToken
 let config: IConfig
 let tokenName: string = 'auth'
 
@@ -28,23 +30,31 @@ class Client implements IClient {
     public static readonly REG_EXP_SYNTAX = /^(?:\/[а-яА-Яa-zA-Z0-9-_%]+)*(?:\/[а-яА-Яa-zA-Z0-9-#_.%]+)+(?:\\??.*)$/
 
     public static setConfig(aConfig: IConfig): void {
-        getLevelAccessByToken = aConfig.getLevelAccessByToken
+        getUserByToken = aConfig.getUserByToken
         tokenName = aConfig.tokenName || tokenName
         config = aConfig
     }
 
+    private configUrl: string = '';
     public req = IncomingMessage;
+    public res = ServerResponse;
     public ip: string;
     public protocol: string;
+    public body: string | undefined | {[fieldName: string]: string};
     public fullUrl: string = '';
     public originalUrl: string = '';
+    public redirect?: string = ''
     public contentType: string;
     public method: string;
     public hostName: string;
-    public fields: {} = {};
+    public fields: {
+        [fieldName: string]: string
+    }[] = [];
     public files: {} = {};
     public params: {} = {};
     public cookie: {} = {};
+// @ts-ignore
+    public user: IUser;
     public methodApp?: {
         appName: string,
         methodName: string,
@@ -52,7 +62,6 @@ class Client implements IClient {
     public accessLevel?: accessValues;
     public accessLevelOnly?: accessValues;
     public identUrl: IConfigUrls = {};
-    public res = ServerResponse;
 
     constructor(request: IncomingMessage, response: ServerResponse) {
         this.ip = request.headers['x-forwarded-for'];
@@ -63,6 +72,35 @@ class Client implements IClient {
         this.req = request
         this.res = response
     }
+
+    public getTokenName() {
+        return tokenName
+    }
+
+    private async checkBody() {
+        let bodyStr = await new Promise((resolve, reject) => {
+            let body = '';
+            this.req.on('data', (chunk: Buffer) => {
+                body += chunk.toString();
+            });
+            this.req.on('end', () => {
+                resolve(body);
+            });
+
+            this.req.on('error', (error: string) => {
+                console.log(error)
+                reject(false);
+            });
+        });
+        if (typeof bodyStr === 'string') {
+            try {
+                this.body = JSON.parse(bodyStr)
+            } catch (e) {
+                this.body = bodyStr
+            }
+        }
+        return true
+    };
 
     public async checkUrl() {
         if (Client.REG_EXP_BAD.test(this.req.url)) {
@@ -77,6 +115,10 @@ class Client implements IClient {
         return true;
     }
 
+    async sendIndexHtml() {
+
+    }
+
     public async matchUrl() {
         let curr_url: string | boolean = false;
         const {urls} = config;
@@ -88,6 +130,7 @@ class Client implements IClient {
                 this.methodApp = urls[url].app;
                 this.accessLevel = urls[url].accessLevel;
                 this.accessLevelOnly = urls[url].accessLevelOnly;
+                this.configUrl = url;
             }
         }
         if (curr_url === false) {
@@ -120,6 +163,12 @@ class Client implements IClient {
     }
 
     private resolveUrl() {
+        if (this.originalUrl === this.configUrl) this.redirect = this.identUrl.redirect;
+        else this.redirect = config.redirects?.find(redirect => {
+            if (typeof redirect.origin === "string") redirect.origin = [redirect.origin];
+            return redirect.origin.some(url => url === this.originalUrl)
+        })?.target
+
         this.fullUrl = `${this.protocol}://${this.hostName}${this.req.url}`;
         const urlApi = new URL(this.fullUrl);
         // @ts-ignore
@@ -129,6 +178,8 @@ class Client implements IClient {
 
     private async checkAccess() {
         if (this.req.headers['cookie']) this.cookie = cookie.parse(this.req.headers['cookie']);
+        // @ts-ignore
+        const user = this.user = await getUserByToken(this.cookie[tokenName]);
         if (this.accessLevel === 'free') return true;
         if (this.accessLevel === 'close') {
             await this.send({
@@ -136,12 +187,10 @@ class Client implements IClient {
                 statusMessage: 'url_closed'
             })
         }
-        // @ts-ignore
-        const level = await getLevelAccessByToken(this.cookie[tokenName]);
-        if (typeof level === "number") {
-            if (!this.accessLevelOnly) this.accessLevelOnly = level;
+        if (user && typeof user.level === "number") {
+            if (!this.accessLevelOnly) this.accessLevelOnly = user.level;
             // @ts-ignore
-            if (level <= this.accessLevel && level === this.accessLevelOnly) {
+            if (user.level <= this.accessLevel && user.level === this.accessLevelOnly) {
                 return true;
             }
         }
@@ -153,8 +202,7 @@ class Client implements IClient {
     }
 
     private async checkFile() {
-        const file = path.join(config.pathToRootDir, this.originalUrl);
-        console.log(file);
+        const file = path.join(config.pathToRootDir, (this.redirect || this.originalUrl));
         if (await isExist(file)) {
             await this.sendFile(file)
         } else {
@@ -207,6 +255,10 @@ class Client implements IClient {
             );
         } catch (e) {
             console.log(e);
+            await this.send({
+                statusCode: 500,
+                statusMessage: 'error_reading_file'
+            })
         }
     }
 
@@ -216,6 +268,7 @@ class Client implements IClient {
         await this.checkAccess() &&
         this.resolveUrl() &&
         await this.checkFormData() &&
+        await this.checkBody() &&
         await this.checkMethodApp() &&
         await this.checkFile()
     }
