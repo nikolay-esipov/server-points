@@ -105,7 +105,7 @@ const Config: IUserConfig = {
                     app: true
                 },
                 {
-                    value: '/assets/images/superImages',
+                    value: '/assets/images/secret_images',
                 },
             ]
         },
@@ -115,11 +115,11 @@ const Config: IUserConfig = {
                 {
                     value: '/mayApp',
                     app: true
-                    // все методы приложения mayApp кроме super_admin_method будут доступны для admin и выше
+                    // все методы приложения mayApp кроме secret_method будут доступны для admin и выше
                 },
                 {
                     value: '/assets/images',
-                    // все файлы и папки в /assets/images кроме /assets/images/superImages будут доступны для admin и выше
+                    // все файлы и папки в /assets/images кроме /assets/images/secret_images будут доступны для admin и выше
                 },
             ]
         },
