@@ -253,6 +253,9 @@ class Client implements IClient {
         this.res.setHeader('Content-Type', 'text/plain; charset=utf-8');
         await this.send(HTTPResponse);
     }
+    public async sendStatus(HTTPResponse: IHTTPResponse) {
+        await this.send(HTTPResponse);
+    }
 
     public async sendFile(filePath: string) {
         const extname = path.extname(filePath);

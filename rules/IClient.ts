@@ -32,6 +32,7 @@ interface IClient {
     accessLevelOnly?: accessValues,
     getTokenName(): string
     sendJson(HTTPResponse: IHTTPResponse): void;
+    sendStatus(HTTPResponse: IHTTPResponse): void;
     sendText(HTTPResponse: IHTTPResponse): void;
     sendFile(filePath: string): void;
 }
