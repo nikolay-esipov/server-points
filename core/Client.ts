@@ -238,15 +238,26 @@ class Client implements IClient {
         return true
     }
 
-    public async send(HTTPResponse: IHTTPResponse) {
+    private async send(HTTPResponse: IHTTPResponse) {
         this.res.statusCode = HTTPResponse.statusCode;
         this.res.statusMessage = HTTPResponse.statusMessage;
         this.res.end(HTTPResponse.body || '');
     }
 
+    public async sendJson(HTTPResponse: IHTTPResponse) {
+        this.res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        await this.send(HTTPResponse);
+    }
+
+    public async sendText(HTTPResponse: IHTTPResponse) {
+        this.res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+        await this.send(HTTPResponse);
+    }
+
     public async sendFile(filePath: string) {
         const extname = path.extname(filePath);
-        const contentType = mime.getType(extname);
+        let contentType = mime.getType(extname);
+        contentType += '; charset=UTF-8';
         this.res.setHeader('Content-Type', contentType);
         try {
             await pipeline(
