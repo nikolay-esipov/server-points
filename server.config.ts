@@ -15,7 +15,8 @@ enum accessLevels {
 const Config: IUserConfig = {
     pathToApps: path.join(__dirname, './test/apps'),
     pathToRootDir: path.join(__dirname, './test'),
-    async getUserByToken(token: string | undefined) {
+    async getUserByToken(headers) {
+        const token = headers['authorization'];
         if (token && token.length>10) {
             return {
                 level: 2,

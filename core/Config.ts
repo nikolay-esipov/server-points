@@ -2,26 +2,16 @@ declare function require(name: string): any;
 declare const process: {env: {PORT: string | number}}
 
 import {IUserConfig, IConfig, IConfigUrls} from "../rules/IServerConfig";
-// @ts-ignore
 import {readdir} from 'fs/promises';
-// @ts-ignore
 import path from "path";
 
 class Config implements IConfig {
-    // @ts-ignore
     urls: { [url: string]: IConfigUrls; } = {}
     port
-    // @ts-ignore
     apps: {[app: string]: {}} = {}
     accessAreas
     pathToApps
     pathToRootDir
-    redirects?: [
-        {
-            origin: string | string[]
-            target: string
-        }
-    ]
     getUserByToken
     tokenName
 
@@ -33,7 +23,6 @@ class Config implements IConfig {
         this.getUserByToken = config.getUserByToken
         this.tokenName = config.tokenName
         this.pathToRootDir = config.pathToRootDir
-        this.redirects = config.redirects
     }
 
     public static async createConfig(userConfig: IUserConfig): Promise<IConfig> {
@@ -48,29 +37,14 @@ class Config implements IConfig {
         await this.addAppList()
     }
 
-/*    private getRedirectsPath(configUrl: string): string[] | '' {
-        let currUrl: string | boolean = false;
-        let regUrl = new RegExp(`^${configUrl}.*`, 'i');
-        if (this.redirects && this.redirects.length) {
-            for (const redirect of this.redirects) {
-                if(regUrl.test(redirect.origin) && (!currUrl || redirect.origin.length > currUrl.length)) {
-                    currUrl = configUrl;
-                }
-            }
-        }
-        return ''
-    }*/
-
     private createUrls() {
         for (const area of this.accessAreas) {
             area.urls.forEach(url => {
-                let accessLevel = 'close';
-                // @ts-ignore
+                let accessLevel: number | "free" | 'close' = 'close';
                 if (typeof area.accessLevel === "number" &&
                     (!isNaN(area.accessLevel)) ||
                     area.accessLevel === 'free'
                 ) {
-                    // @ts-ignore
                     accessLevel = area.accessLevel
                 }
                 // @ts-ignore
@@ -78,11 +52,8 @@ class Config implements IConfig {
                 this.urls[urlValue] = {
                     // @ts-ignore
                     maxFileSize: url.maxFileSize || false,
-                    // @ts-ignore
                     accessLevel,
                     accessLevelOnly: area.accessLevelOnly,
-                    // @ts-ignore
-                    redirect: url.redirect,
                 }
                 // @ts-ignore
                 if (url.app) {
@@ -92,7 +63,6 @@ class Config implements IConfig {
                         url.value = url.value.replace(/^\/(?=\w+)/, '');
                         // @ts-ignore
                         let [appName, methodName] = url.value.split('/');
-                        // @ts-ignore
                         this.urls[urlValue].app = {
                             appName,
                             methodName,
@@ -102,7 +72,6 @@ class Config implements IConfig {
                         this.urls[urlValue].app = url.app;
                     }
                 }
-                // @ts-ignore
             })
         }
     }

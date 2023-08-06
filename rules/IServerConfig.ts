@@ -1,5 +1,5 @@
 import IClient from "./IClient";
-import {IGetUserByToken} from "./IIdentApp";
+import IGetUserByToken from "./IGetUserByToken";
 
 type accessValues = 'free' | 'close' | number;
 
@@ -10,7 +10,6 @@ interface IAccessLevels {
 interface IAccessAreas {
     urls: ({
         value: string,
-        redirect?: string
         app?: {
             appName: string,
             methodName: string,
@@ -32,7 +31,6 @@ interface IConfigUrls {
         appName: string,
         methodName: string,
     }
-    redirect?: string,
     maxFileSize?: number,
     accessLevelOnly?: accessValues,
     accessLevel?: accessValues
@@ -41,14 +39,9 @@ interface IConfigUrls {
 interface IUserConfig {
     port?: number,
     pathToRootDir: string,
+    noIndexHtml?: boolean,
     accessAreas: IAccessAreas[],
     pathToApps: string,
-    redirects?: [
-        {
-            origin: string | string[]
-            target: string
-        }
-    ]
     getUserByToken: IGetUserByToken,
     tokenName: string,
     devRoutersRgExp?: RegExp[]

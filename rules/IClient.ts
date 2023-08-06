@@ -1,28 +1,27 @@
 import {accessValues, IConfigUrls, IUser} from "./IServerConfig";
 import IHTTPResponse from "./IHTTPResponse";
-// @ts-ignore
 import {ServerResponse, IncomingMessage} from "http";
 
 interface IClient {
     req: IncomingMessage;
     res: ServerResponse;
-    protocol: string;
+    protocol: string | string[] | undefined;
     fullUrl: string;
     identUrl: IConfigUrls;
-    hostName: string;
+    hostName: string | undefined;
     redirect?: string;
     body: string | undefined | {[fieldName: string]: string};
-    originalUrl: string;
-    contentType: string;
-    method: string;
-    ip: string;
+    originalUrl: string | undefined ;
+    contentType: string | undefined;
+    method: string | undefined;
+    ip: string | string[] | undefined;
     params: {};
     cookie: {};
     fields: {
         [fieldName: string]: string
     }[];
     files: {};
-    user: IUser;
+    user: IUser | false;
     methodApp?: {
         appName: string,
         methodName: string,
@@ -30,7 +29,6 @@ interface IClient {
 
     accessLevel?: accessValues,
     accessLevelOnly?: accessValues,
-    getTokenName(): string
     sendJson(HTTPResponse: IHTTPResponse): void;
     sendStatus(HTTPResponse: IHTTPResponse): void;
     sendText(HTTPResponse: IHTTPResponse): void;

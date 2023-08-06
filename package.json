@@ -1,6 +1,6 @@
 {
   "name": "server-points",
-  "version": "0.0.26",
+  "version": "0.0.30",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -24,10 +24,13 @@
   "author": "Nikolay Esipov <n.esipov@yandex.ru>",
   "license": "MIT",
   "dependencies": {
-    "cookie":"0.5.0",
+    "cookie": "0.5.0",
     "formidable": "^2.1.1",
     "fslite": "0.0.1",
     "get_token_char": "^1.0.0",
     "mime": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.8"
   }
 }
