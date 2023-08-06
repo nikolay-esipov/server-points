@@ -49,7 +49,7 @@ class Client implements IClient {
     public accessLevel?: accessValues;
     public accessLevelOnly?: accessValues;
     public identUrl: IConfigUrls = {};
-    private isEndFileIndexFile: boolean = config.noIndexHtml || true;
+    private noIndexHtml: boolean = config.noIndexHtml || false;
 
     constructor(request: IncomingMessage, response: ServerResponse) {
         this.ip = request.headers['x-forwarded-for'];
@@ -176,7 +176,7 @@ class Client implements IClient {
         if (await isExist(file)) {
             await this.sendFile(file)
         } 
-        else if (this.isEndFileIndexFile) {
+        else if (!this.noIndexHtml) {
             const file = path.join(config.pathToRootDir, 'index.html');
             await this.sendFile(file)
         }
