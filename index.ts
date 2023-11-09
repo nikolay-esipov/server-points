@@ -10,7 +10,7 @@ import Client = require("./core/Client");
 const {setConfig} = Client
 
 async function startServer(userConfig: IUserConfig): Promise<void> {
-    const config = await createConfig(userConfig);
+    const config = createConfig(userConfig);
     setConfig(config);
     const server = createServer((request: IncomingMessage, response:  ServerResponse) => {
         const client = new Client(request, response);
@@ -21,6 +21,7 @@ async function startServer(userConfig: IUserConfig): Promise<void> {
 
 function addUseClientDev(app: IApp, config: IConfig) {
     const {devRoutersRgExp} = config;
+    setConfig(config);
     app.use(async function (request, response, next) {
         let client = new Client(request, response);
         await client.checkUrl();
@@ -57,5 +58,6 @@ async function addClientToDevServer(webpackConfig: IWebpackConfig, config: IConf
 export = {
     addClientToDevServer,
     startServer,
+    addUseClientDev,
 }
 

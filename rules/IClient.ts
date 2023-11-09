@@ -13,6 +13,7 @@ interface IClient {
     body: string | undefined | {[fieldName: string]: string};
     originalUrl: string | undefined ;
     contentType: string | undefined;
+    pathToRootDir: string;
     method: string | undefined;
     ip: string | string[] | undefined;
     params: {};
@@ -33,6 +34,7 @@ interface IClient {
     sendStatus(HTTPResponse: IHTTPResponse): void;
     sendText(HTTPResponse: IHTTPResponse): void;
     sendFile(filePath: string): void;
+    checkFile(): void;
 }
 
 export = IClient;

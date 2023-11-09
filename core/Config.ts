@@ -1,3 +1,5 @@
+import {readdirSync} from "fs";
+
 declare function require(name: string): any;
 declare const process: {env: {PORT: string | number}}
 
@@ -10,31 +12,31 @@ class Config implements IConfig {
     port
     apps: {[app: string]: {}} = {}
     accessAreas
+    devRoutersRgExp
     pathToApps
     pathToRootDir
     getUserByToken
-    tokenName
 
     constructor(config: IUserConfig) {
 
         this.port = config.port
         this.accessAreas = config.accessAreas
         this.pathToApps = config.pathToApps
+        this.devRoutersRgExp = config.devRoutersRgExp
         this.getUserByToken = config.getUserByToken
-        this.tokenName = config.tokenName
         this.pathToRootDir = config.pathToRootDir
     }
 
-    public static async createConfig(userConfig: IUserConfig): Promise<IConfig> {
+    public static createConfig(userConfig: IUserConfig): IConfig {
         userConfig.port = userConfig.port || +process.env.PORT || 3033;
         const config = new Config(userConfig);
-        await config.init();
+        config.init();
         return config
     }
 
-    public async init() {
+    public init() {
         this.createUrls();
-        await this.addAppList()
+        this.addAppList()
     }
 
     private createUrls() {
@@ -58,9 +60,7 @@ class Config implements IConfig {
                 // @ts-ignore
                 if (url.app) {
                     // @ts-ignore
-                    if (!url.app.appName) {
-                        // @ts-ignore
-                        url.value = url.value.replace(/^\/(?=\w+)/, '');
+                    if (url.app === true) {
                         // @ts-ignore
                         let [appName, methodName] = url.value.split('/');
                         this.urls[urlValue].app = {
@@ -75,12 +75,19 @@ class Config implements IConfig {
             })
         }
     }
+    private appIsInclude(appName: string): boolean {
+        for (let url in this.urls) {
+            let item = this.urls[url];
+            if (item.app?.appName === appName) return true
+        }
+        return false
+    }
 
-    private async addAppList() {
-        const appNames = await readdir(this.pathToApps);
+    private addAppList() {
+        const appNames = readdirSync(this.pathToApps);
         for (const appName of appNames) {
             const {ext, name} = path.parse(appName);
-            if (ext === '.js') {
+            if (ext === '.js' && this.appIsInclude(name)) {
                 this.apps[name] = require(path.join(this.pathToApps, appName));
             }
         }

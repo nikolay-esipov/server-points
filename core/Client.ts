@@ -19,6 +19,7 @@ let getUserByToken: IGetUserByToken = async function (token): Promise<IUser | fa
 
 class Client implements IClient {
     public static readonly REG_EXP_BAD_URL = /(?:\.{2,})|(?:\/{2,})/g
+
     public static setConfig(aConfig: IConfig): void {
         getUserByToken = aConfig.getUserByToken || getUserByToken
         config = aConfig
@@ -31,8 +32,9 @@ class Client implements IClient {
     public protocol: string | string[] | undefined;
     public body: string | undefined | { [fieldName: string]: string };
     public fullUrl: string = '';
-    public originalUrl: string | undefined;
-    public contentType: string | undefined;
+    public originalUrl: string;
+    public contentType: string;
+    public pathToRootDir: string = config.pathToRootDir;
     public method: string | undefined;
     public hostName: string | undefined;
     public fields: {
@@ -50,6 +52,7 @@ class Client implements IClient {
     public accessLevelOnly?: accessValues;
     public identUrl: IConfigUrls = {};
     private noIndexHtml: boolean = config.noIndexHtml || false;
+    private bodyMake: boolean = false;
 
     constructor(request: IncomingMessage, response: ServerResponse) {
         this.ip = request.headers['x-forwarded-for'];
@@ -62,6 +65,7 @@ class Client implements IClient {
     }
 
     private async checkBody() {
+        if (this.bodyMake) return true;
         let bodyStr = await new Promise((resolve, reject) => {
             let body = '';
             this.req.on('data', (chunk: Buffer) => {
@@ -121,7 +125,8 @@ class Client implements IClient {
     }
 
     private async checkFormData() {
-        if (this.method === 'post' && this.contentType === 'multipart/form-data') {
+        if (this.method === 'post' && this.contentType?.includes('multipart/form-data')) {
+            this.bodyMake = true
             await new Promise((resolve, reject) => {
                 const formData = formidable({
                     maxFileSize: this.identUrl.maxFileSize || (50 * 1024 * 1024),
@@ -171,16 +176,14 @@ class Client implements IClient {
         return false
     }
 
-    private async checkFile() {
+    public async checkFile() {
         const file = path.join(config.pathToRootDir, (this.originalUrl || ''));
         if (await isExist(file)) {
             await this.sendFile(file)
-        } 
-        else if (!this.noIndexHtml) {
+        } else if (!this.noIndexHtml) {
             const file = path.join(config.pathToRootDir, 'index.html');
             await this.sendFile(file)
-        }
-        else {
+        } else {
             await this.send({
                 statusCode: 404,
                 statusMessage: 'file_not_found'
@@ -190,7 +193,7 @@ class Client implements IClient {
 
     private async checkMethodApp() {
         if (this.methodApp) {
-            let {methodName, appName} = this.methodApp;
+            let {appName, methodName} = this.methodApp;
             try {
                 // @ts-ignore
                 await config.apps[appName][methodName](this);

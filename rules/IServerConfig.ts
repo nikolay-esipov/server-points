@@ -38,13 +38,12 @@ interface IConfigUrls {
 
 interface IUserConfig {
     port?: number,
-    pathToRootDir: string,
+    devRoutersRgExp?: RegExp[]
     noIndexHtml?: boolean,
+    pathToRootDir: string,
     accessAreas: IAccessAreas[],
     pathToApps: string,
     getUserByToken: IGetUserByToken,
-    tokenName: string,
-    devRoutersRgExp?: RegExp[]
 
     beforeIdent?(client: IClient): void[],
 
